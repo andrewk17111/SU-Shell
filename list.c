@@ -92,17 +92,16 @@ int list_empty(struct list_head *head) {
  * @return: size of the lists
  **/ 
 int list_size(struct list_head *head) {
-    if (list_empty(head)) return 0;
-
-    int count = 1;
-    struct list_head *curr;
+    int size = 0;
+    if (list_empty(head)) return size;
 
     // list traversal in order and stops when we cycled back to the start (circularly linked list)
+    struct list_head *curr;
     for (curr = head->next; curr != head; curr = curr->next) {
-        count++;
+        size++;
     }
 
-    return count; 
+    return size; 
 }
 
 /**

@@ -1,24 +1,60 @@
 /**
- * File: parser.c
- * Purpose: Functions used to tokenize a command line input string
- *      into parts (which we call tokens). The parser utilizes a state machine
- *      by looking at each character in turn, determining what that character is
- *      and how to proceed.
+ * @file: parser.c
+ * @purpose: Functions used to tokenize a command line input string
+ * into parts (which we call tokens). The parser utilizes a state machine
+ * by looking at each character in turn, determining what that character is
+ * and how to proceed.
  * 
  * @author: Andrew Kress
+ * @author: Michael Permyashkin
  **/ 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "list.h"
 #include "internal.h"
 
-//The current state of the state machine
-enum state {
+// Enum to hold all possible states the state machine can be in
+enum state_e {
     WHITESPACE,
     CHAR,
     QUOTE
 };
+
+/**
+ * The command parser uses the state pattern to determine the next
+ * action based on the current character that is being read. We use
+ * this structure to group all relevant information about the state 
+ * machine in order to easily pass the information between the various
+ * handler functions for each state.
+ * 
+ * @state: current state the machine is in (one of @enum state_e)   
+ * @position: current position in the command line input string   
+ * @cmd_len: length of the command line input string  
+ * @sub_start: as arguments are located, this field holds the starting position
+ *      of the argument that will be used when extracting the substring  
+ * @sub_len: length of the substring that has been found. This field increments 
+ *      until we reached the end of that argument. This is used in tandem with 
+ *      @sub_start to extract the complete substring 
+ **/ 
+struct state_machine {
+    enum state_e state;
+    int position;
+    int cmd_len;
+
+    int sub_start;
+    int sub_len;
+};
+
+void initialize_machine(struct state_machine *machine, char *cmdline) {
+    machine->state = WHITESPACE;
+    machine->position = 0;
+    machine->cmd_len = strlen(cmdline);
+
+    machine->sub_start = 0;
+    machine->sub_len = 1;
+}
 
 /**
  * Returns a string that starts at the given index at the length given
@@ -36,59 +72,102 @@ char* sub_string(char* str, int start, int length) {
     return output;
 }
 
+void create_list_node(struct state_machine *sm, struct list_head *list_args, char *value) {
+    struct argument_t *arg = malloc(sizeof(struct argument_t));
+    arg->value = value;
+    list_add_tail(&arg->list, list_args);
+}
+
+void do_ws(struct state_machine *sm, char c) {
+    if (c == '"') {
+        sm->state = QUOTE;
+        sm->sub_start = sm->position + 1;
+        sm->sub_len = 1;
+    } else if (c != ' ' && c != '\t') {
+        sm->state = CHAR;
+        sm->sub_start = sm->position;
+        sm->sub_len = 1;
+    }
+}
+
+void do_char(struct state_machine *sm, char c, struct list_head *list_args, char *cmdline) {
+    if (!isalpha(c)) {
+        sm->state = WHITESPACE;
+
+        struct argument_t *arg = malloc(sizeof(struct argument_t));
+        char *value = sub_string(cmdline, sm->sub_start, sm->sub_len);
+        create_list_node(sm, list_args, value);
+    }
+    sm->sub_len++;
+}
+
+void do_quote(struct state_machine *sm, char c, struct list_head *list_args, char *cmdline) {
+    if (c != '"' && c != '\0' && c != '\n') {
+        sm->sub_len++;
+    } else {
+
+        char *value = sub_string(cmdline, sm->sub_start, --sm->sub_len);
+        create_list_node(sm, list_args, value);
+        
+        sm->state = WHITESPACE;
+    }
+}
+
 /**
- * Separates a string by spaces or quotes
+ * Uses the statemachine pattern to iteratively move through the command line input that
+ * that given by the user. Based on the character value, the state of the machine is 
+ * changed to determine what should be done next. The state machine keeps track of 
+ * the length of the cmdline input, its position in the cmdline, the machines state,
+ * and positions of each substring that is encountered.
  * 
+ * @param list_args - linked list to hold parsed arguments from input
  * @param cmdline - the command that was entered by user
 **/
-void split_command(struct list_head *list_args, char* cmdline) {
-    int cmdline_len = strlen(cmdline);
-    int count = 0;
-    enum state current_state = WHITESPACE;
-    int start = 0;
-    int length = 1;
-    
-    for (int i = 0; i <= cmdline_len; i++) {
-        if (current_state == WHITESPACE) {
-            if (cmdline[i] == '"' && i < cmdline_len - 1) {
-                current_state = QUOTE;
-                start = i + 1;
-                length = 1;
-            } else if (cmdline[i] != ' ' && cmdline[i] != '\t') {
-                current_state = CHAR;
-                start = i;
-                length = 1;
-            }
-        } else if (current_state == CHAR) {
-            if (cmdline[i] == ' ' || cmdline[i] == '\t' || cmdline[i] == '\0' || cmdline[i] == '\n') {
-                current_state = WHITESPACE;
-                count++;
+void split_command(struct list_head *list_args, char *cmdline) {
+    // initialize statemachine
+    struct state_machine *sm = malloc(sizeof(struct state_machine));
+    initialize_machine(sm, cmdline);
 
-                struct argument_t *arg = malloc(sizeof(struct argument_t));
-                arg->value = sub_string(cmdline, start, length);
-                list_add_tail(&arg->list, list_args);
-            }
-            length++;
-        } else if (current_state == QUOTE) {
-            if (cmdline[i] != '"' && cmdline[i] != '\0' && cmdline[i] != '\n') {
-                length++;
-            } else {
-                current_state = WHITESPACE;
-                count++;
+    // initialize statemachine
+    for (sm->position = 0; sm->position < sm->cmd_len; sm->position++) {
+        
+        // get character the statemachine is looking at
+        char c = cmdline[sm->position];
+
+        switch(sm->state) {
+            // character state
+            case CHAR:
+                do_char(sm, c, list_args, cmdline);
+                break;
+
+            // quote state
+            case QUOTE:
+                do_quote(sm, c, list_args, cmdline);
+                break;
                 
-                struct argument_t *arg = malloc(sizeof(struct argument_t));
-                arg->value = sub_string(cmdline, start, --length);
-                list_add_tail(&arg->list, list_args);
-            }
+            // whitespace state
+            default:
+                do_ws(sm, c);
+
         }
     }
 }
 
+
+/**
+ * Driver function for the command parser functionality. This function initializes
+ * an empty linked list that will hold the parsed arguments. Then it simply 
+ * passes the linked list and the command line input to the parsing function.
+ * 
+ * @param cmdline - the command line input given by the user that will be parsed
+ **/ 
 void handle_command(char *cmdline) {
     // initilize linked list to hold tokens
     LIST_HEAD(list_args);
 
+    // parse command
     split_command(&list_args, cmdline);
 
     list_print(&list_args);
+    printf("size -> %d\n", list_size(&list_args));
 }
