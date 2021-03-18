@@ -1,11 +1,18 @@
 /**
- * File: list.c
- * Purpose: Implementations of functions which perform essential linked list
- *      operations such as inserting a node, deleting a node, checking list size
- *      and checking if a list is empty.
- * 
+ * @file: list.c
  * @author: Michael Permyashkin
- **/ 
+ * 
+ * @brief: Implementations of linked list utilities functions for basic operations
+ * 
+ * Implementations of function signatures found in @file list.h. Functions perform
+ * basic operations on the linked list such as:
+ *      - adding a node
+ *      - deleting a node
+ *      - getting the length of the list
+ *      - checking if the list is empty
+ *      - printing contents of the list
+ */ 
+
 #include <stdio.h>
 #include "list.h"
 #include "internal.h"

@@ -1,12 +1,10 @@
 /**
- * File: list.h
- * Purpose: Contains function signatures for linked list operations. Defines
- *      function like macros which we use to initialize a linked list and nodes
- *      of the list.
- * 
- * @author: Michael Permyashkin
+ * @file: sushell.c
  * @author: Andrew Kress
- **/ 
+ * @author: Michael Permyashkin
+ * 
+ * @brief: Launches SU Shell prompting for user input
+ */ 
 
 #include <stdio.h>
 #include <string.h>

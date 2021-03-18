@@ -1,11 +1,13 @@
 /**
- * File: list.h
- * Purpose: Contains function signatures for linked list operations. Defines
- *      function like macros which we use to initialize a linked list and nodes
- *      of the list.
- * 
+ * @file: list.h
  * @author: Michael Permyashkin
- **/ 
+ * 
+ * @brief: Header file for linked list utility functions for basic operations and function
+ * like macros
+ * 
+ * Defintions of function-like macros to assist with list initialization and list node
+ * types. Includes function signatures whose implementation can be found in @file list.c
+ */ 
 
 #include <stddef.h>
 
@@ -15,7 +17,7 @@
 /**
  * List head initializations
  * Sets next, previous == self
- **/
+ */
 #define LIST_HEAD_INIT(name) \
     {                        \
         &(name), &(name)     \
@@ -26,7 +28,7 @@
  * expands to -> struct list_head name = { &(name), &(name) }
  * 
  * @param name: name of the linked list
- **/
+ */
 #define LIST_HEAD(name) \
     struct list_head name = LIST_HEAD_INIT(name)
 
@@ -36,7 +38,7 @@
  * @param ptr:        the pointer to the member
  * @param type:       the tupe of the container struct this is embedded in
  * @param member:    the name of the member within the struct
- **/
+ */
 #define list_entry(ptr, type, member) ({         \
     void *__mptr = (void *)(ptr);                \
     ((type *)(__mptr - offsetof(type, member))); \
@@ -45,7 +47,7 @@
 /**
  * Type definition of list head which has holds points to the list nodes
  * directly proceeding and preceeding the given node
- **/
+ */
 struct list_head
 {
     struct list_head *next, *prev;
