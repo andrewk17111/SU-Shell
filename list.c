@@ -14,6 +14,7 @@
  */ 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "list.h"
 #include "internal.h"
 
@@ -127,5 +128,26 @@ void list_print(struct list_head *head) {
             entry = list_entry(curr, struct argument_t, list);
             printf("(%s)\n", entry->value);
         }
+    }
+}
+
+/**
+ * Converts linked list to array
+ * 
+ * @head: the head node of a given linked list
+ * 
+ */ 
+void list_to_arr(struct list_head *head, char *arr[]) {
+    if (list_empty(head)) return;
+
+    int i = 0;
+    struct argument_t *entry; // the wrapping structure of each node in the list
+    struct list_head *curr; // the current node we are at in the traversal
+
+    // list traversal in order and stops when we cycled back to the start (circularly linked list)
+    for (curr = head->next; curr != head; curr = curr->next) {
+        // extract the nodes structure
+        entry = list_entry(curr, struct argument_t, list);
+        arr[i++] = entry->value;
     }
 }
