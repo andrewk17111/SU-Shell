@@ -248,6 +248,13 @@ void handle_command(char *cmdline) {
     // parse command
     split_command(&list_args, cmdline);
 
-    list_print(&list_args);
-    printf("size -> %d\n", list_size(&list_args));
+    // convert list to array
+    int size = list_size(&list_args);
+    char *args[size];
+    list_to_arr(&list_args, args);
+
+    // print array
+    for (int i=0; i<size; i++)
+        printf("args[%d] -> (%s)\n", i, args[i]);
+    
 }
