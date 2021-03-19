@@ -373,6 +373,31 @@ int handle_command(char *cmdline, int cmd_len) {
         // parse tokens from subcommand and store in list
         subcommand_parser(&list_tokens, subcommands_arr[i]);
 
+        // ls -la > output -->  list_tokens = (ls)  (-la)  (>)  (output)
+        /**
+         *  1. loop over all tokens
+         *      - if ( is_redirection(curr_node) )      ->>>>     [ '<' , '>' , '>>' ]
+         *          - if ( curr_node->next != head )
+         *              - token = list_entry(curr_node->next)
+         * 
+         *              - if ( < )
+         *                    token.token_type = TOKEN_FNAME_IN
+         *              - if ( > )
+         *                    token.token_type = TOKEN_FNAME_OUT_OVERWRITE 
+         *              - if ( >> )
+         *                    token.token_type = TOKEN_FNAME_OUT_APPEND
+         * 
+         *              - remove redirection node
+         *          - else
+         *              - some kind of error message goes here (no file specified)
+         * 
+         *       grep .... | sort | less
+         * 
+         *  2. Now we have only tokens that are words, flags and filenames
+         *      - tokens_to_command()
+         *              - 
+         */ 
+
         // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
         tokens_to_command(command, &list_tokens);

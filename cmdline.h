@@ -18,7 +18,9 @@
 enum token_types_e {
     TOKEN_NORMAL,
     TOKEN_REDIR,
-    TOKEN_FNAME
+    TOKEN_FNAME_IN,
+    TOKEN_FNAME_OUT_OVERWRITE,
+    TOKEN_FNAME_OUT_APPEND,
 };
 
 
@@ -42,9 +44,27 @@ struct token_t {
 /**
  * Definition of all types of output a command may use
  */
-enum output_types_e {
+enum internal_output_types_e {
     OUT_NORMAL,
     OUT_FILE,
+};
+
+/**
+ * Definition of all types of input a command may use
+ */
+enum internal_input_types_e {
+    IN_NORMAL,
+    IN_FILE,
+};
+
+
+enum external_input_types_e {
+    IN_NORMAL,
+    IN_PIPE,
+};
+
+enum external_output_types_e {
+    OUT_NORMAL,
     OUT_PIPE,
 };
 
@@ -54,9 +74,30 @@ enum output_types_e {
 struct command_t {
     int num_tokens;
     char **tokens;
-    enum output_types_e output_type;
+
+    int pipe_in;
+    int pipe_out;
+
+    int file_in;
+    const char *infile;
+
+    int file_out;
     const char *outfile;
+
+    // handles output within the command itself ( ls -la > out )
+    enum internal_output_types_e internal_output_type;
+    const char *outfile;
+
+    // handles input within the command itself   ( cat < out )
+    enum internal_input_types_e internal_input_type;
+    const char *infile;
     
+    // handles input from another command ( | )
+    enum external_input_types_e external_output_type;
+
+    // handles output from another command ( | )
+    enum external_output_types_e external_output_type;
+
     struct list_head list;
 };
 
