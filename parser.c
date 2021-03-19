@@ -97,13 +97,13 @@ char * sub_string(char* str, int start, int length) {
  * Creates a new node in the linked list of arguments
  * 
  * @param sm: state_machine struct
- * @param list_commands: linked list to hold list of subcommands
+ * @param head: head of linked list we are adding the node to
  * @param value: argument that was extracted
  **/ 
-void create_list_node(struct state_machine *sm, struct list_head *list_commands, char *value) {
+void create_list_node(struct state_machine *sm, struct list_head *head, char *value) {
     struct argument_t *arg = malloc(sizeof(struct argument_t));
     arg->value = value;
-    list_add_tail(&arg->list, list_commands);
+    list_add_tail(&arg->list, head);
 }
 
 
@@ -146,15 +146,15 @@ void do_ws(struct state_machine *sm, char c) {
  * 
  * @param sm: state_machine struct
  * @param c: character the statemachine is reading
- * @param list_commands: linked list to hold list of subcommands
+ * @param list_subcommand: linked list to hold the subcommand being parsed
  * @param cmdline: command input from user
  **/ 
-void do_char(struct state_machine *sm, char c, struct list_head *list_commands, char *cmdline) {
+void do_char(struct state_machine *sm, char c, struct list_head *list_subcommand, char *cmdline) {
     // is space(s) or newline, we found the end of substring
-    if (c == ' ' || c == '\t' || c == '\0' || c == '\n') {
+    if (c == ' ' || c == '\t' || c == '\0') {
         // get substring and add argument to list
         char *value = sub_string(cmdline, sm->sub_start, sm->sub_len);
-        create_list_node(sm, list_commands, value);
+        create_list_node(sm, list_subcommand, value);
 
         // update state
         sm->state = WHITESPACE;
@@ -173,19 +173,19 @@ void do_char(struct state_machine *sm, char c, struct list_head *list_commands, 
  * 
  * @param sm: state_machine struct
  * @param c: character the statemachine is reading
- * @param list_commands: linked list to hold list of subcommands
+ * @param list_subcommand: linked list to hold the subcommand being parsed
  * @param cmdline: command input from user
  **/ 
-void do_quote(struct state_machine *sm, char c, struct list_head *list_commands, char *cmdline) {
+void do_quote(struct state_machine *sm, char c, struct list_head *list_subcommand, char *cmdline) {
     // if not quote or end of input, increment substring length
-    if (c != '"' && c != '\0' && c != '\n') {
+    if (c != '"' && c != '\0') {
         sm->sub_len++;
     } 
     // we reached the end of quoted substring
     else {
         // get substring and add argument to list
         char *value = sub_string(cmdline, sm->sub_start, --sm->sub_len);
-        create_list_node(sm, list_commands, value);
+        create_list_node(sm, list_subcommand, value);
         
         // update state
         sm->state = WHITESPACE;
@@ -200,10 +200,10 @@ void do_quote(struct state_machine *sm, char c, struct list_head *list_commands,
  * the length of the cmdline input, its position in the cmdline, the machines state,
  * and positions of each substring that is encountered.
  * 
- * @param list_commands: linked list to hold list of subcommands
+ * @param list_subcommand: linked list to hold the subcommand being parsed
  * @param cmdline: the command that was entered by user
 **/
-void subcommand_parser(struct list_head *list_commands, char *cmdline) {
+void subcommand_parser(struct list_head *list_subcommand, char *cmdline) {
     // initialize statemachine
     struct state_machine *sm = malloc(sizeof(struct state_machine));
     initialize_machine(sm, cmdline);
@@ -217,12 +217,12 @@ void subcommand_parser(struct list_head *list_commands, char *cmdline) {
         switch(sm->state) {
             // character state
             case CHAR:
-                do_char(sm, c, list_commands, cmdline);
+                do_char(sm, c, list_subcommand, cmdline);
                 break;
 
             // quote state
             case QUOTE:
-                do_quote(sm, c, list_commands, cmdline);
+                do_quote(sm, c, list_subcommand, cmdline);
                 break;
 
             // whitespace state
@@ -231,6 +231,13 @@ void subcommand_parser(struct list_head *list_commands, char *cmdline) {
 
         }
     }
+
+    // Once state machine reaches end, if not in WHITESPACE state then a last substring remains
+    if (sm->state != WHITESPACE) {
+        char *value = sub_string(cmdline, sm->sub_start, sm->position);
+        create_list_node(sm, list_subcommand, value);
+    }
+
 }
 
 
@@ -296,20 +303,25 @@ void handle_command(char *cmdline, int len) {
     char *subcommands_arr[sub_count]; 
     split_cmdline(subcommands_arr, cmdline);
 
+    // parse subcommands
     for (int i=0; i<sub_count; i++) {
-        printf("[%d] -> (%s)\n", i, subcommands_arr[i]);
+        // Initialize list to hold subcommand
+        LIST_HEAD(list_subcommand);
+        
+        subcommand_parser(&list_subcommand, subcommands_arr[i]);
+        list_print(&list_subcommand);
+
+        // linked list holding subcommand is built. Add the subcommand list to the list of subcommands
     }
 
-    // parse command
-    subcommand_parser(&list_commands, cmdline);
 
-    // convert list to array
-    int size = list_size(&list_commands);
-    char *args[size+1]; // leave space for NULL
-    list_to_arr(&list_commands, args);
+    // // convert list to array
+    // int size = list_size(&list_commands);
+    // char *args[size+1]; // leave space for NULL
+    // list_to_arr(&list_commands, args);
 
-    // print array
-    for (int i=0; i<size+1; i++)
-        printf("args[%d] -> (%s)\n", i, args[i]);
+    // // print array
+    // for (int i=0; i<size+1; i++)
+    //     printf("args[%d] -> (%s)\n", i, args[i]);
     
 }

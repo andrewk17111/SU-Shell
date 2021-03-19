@@ -127,8 +127,9 @@ void list_print(struct list_head *head) {
         for (curr = head->next; curr != head; curr = curr->next) {
             // extract the nodes structure and print the contents (the value of the argument)
             entry = list_entry(curr, struct argument_t, list);
-            printf("(%s)\n", entry->value);
+            printf("(%s) -> ", entry->value);
         }
+        printf("NULL\n");
     }
 }
 
