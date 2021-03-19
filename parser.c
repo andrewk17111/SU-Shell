@@ -246,11 +246,12 @@ void subcommand_parser(struct list_head *list_subcommand, char *cmdline) {
  * a pipe is encountered we incremenet the counter and return the final value.
  * 
  * @param cmdline: the command that was entered by user
+ * @param cmd_len: length of command
  * @return: interger value of the number of subcommands found
  */ 
-int get_num_subcommands(char *cmdline) {
+int get_num_subcommands(char *cmdline, int cmd_len) {
     int count = 1;
-    for (int i=0; i<strlen(cmdline); i++) {
+    for (int i=0; i<cmd_len; i++) {
         if (cmdline[i] == '|') {
             count++;
         }
@@ -264,12 +265,13 @@ int get_num_subcommands(char *cmdline) {
  * 
  * @param cmdline: the command that was entered by user
  * @param subcommands_arr: array to hold subcommand strings
+ * @param cmd_len: length of command
  */ 
-void split_cmdline(char *subcommands_arr[], char *cmdline) {
+void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
     int idx = 0; // index of subcommand array 
     int start, len = 0; // positions of subcommand start and length
 
-    for (int i=0; i<strlen(cmdline); i++) {
+    for (int i=0; i<cmd_len; i++) {
         // reached pipe or the end of the cmdline input
         if (cmdline[i] == '|' || cmdline[i] == '\n') {
             // copy subcommand to array
@@ -293,15 +295,27 @@ void split_cmdline(char *subcommands_arr[], char *cmdline) {
  * passes the linked list and the command line to the parsing function.
  * 
  * @param cmdline: the command line given by the user that will be parsed
+ * @param cmd_len: length of command
  **/ 
-void handle_command(char *cmdline, int len) {
+int handle_command(char *cmdline, int cmd_len) {
+    printf("len = %d\n", cmd_len);
+    if (cmdline == NULL) return -1;
+    if (cmd_len <= 0) return -1;
+
     // initilize linked list to hold tokens
     LIST_HEAD(list_commands);
 
     // split command line into subcommands
-    int sub_count = get_num_subcommands(cmdline);
+    int sub_count = get_num_subcommands(cmdline, cmd_len);
+
     char *subcommands_arr[sub_count]; 
-    split_cmdline(subcommands_arr, cmdline);
+    split_cmdline(subcommands_arr, cmdline, cmd_len);
+
+    printf("************************\n");
+    for (int i=0; i<sub_count; i++) {
+        printf("[%d] -> (%s)\n", i, subcommands_arr[i]);
+    }
+    printf("************************\n");
 
     // parse subcommands
     for (int i=0; i<sub_count; i++) {
@@ -324,4 +338,5 @@ void handle_command(char *cmdline, int len) {
     // for (int i=0; i<size+1; i++)
     //     printf("args[%d] -> (%s)\n", i, args[i]);
     
+    return 0;
 }

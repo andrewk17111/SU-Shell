@@ -18,8 +18,11 @@ int main(int argc, char *argv[]) {
     char cmdline[CMD_BUFFER];
 
     while(1) {
-        fgets(cmdline, CMD_BUFFER-1, stdin);
-        handle_command(cmdline, strlen(cmdline));   
+
+        if ( fgets(cmdline, CMD_BUFFER-1, stdin) != NULL ) {
+            int rc = handle_command(cmdline, strlen(cmdline));   
+        }
+
     }
     
 }

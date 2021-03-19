@@ -25,7 +25,9 @@ struct argument_t {
  * 
  * @param cmdline: the command line given by the user that will be parsed
  * @param len: length of cmdline string
+ * 
+ * @return: status of execution
  **/ 
-void handle_command(char* cmdline, int len);
+int handle_command(char* cmdline, int len);
 
 #endif
