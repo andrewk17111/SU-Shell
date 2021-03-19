@@ -296,61 +296,51 @@ void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
 }
 
 
-int token_list_to_arr (char *tokens_arr[], struct list_head *list_tokens) {
-    int size = list_size(list_tokens);
-    tokens_arr = malloc(sizeof(char *) * (size+1));
-    list_to_arr(list_tokens, tokens_arr);
-
-    // for (int i=0; i<size+1; i++) {
-    //     printf("[%d] -> %s\n", i, tokens_arr[i]);
-    // }
-
-    return size + 1;
-}
-
-
-void print_command_struct(struct command_t *command) {
-    printf("*********************************\n");
-
-    printf("    num_tokens -> %d\n", command->num_tokens);
-    
-    printf("    tokens -> ");
-    for (int i = 0; i < command->num_tokens; i++) {
-        printf("[%s] ", command->tokens[i]);
-    }
-    printf("\n");
-
-    printf("*********************************\n");
-}
-
-
+/**
+ * Takes a list of tokens which describe a single command and creates a data structure
+ * to represent all the information needed about the command.
+ * 
+ * 
+ * @param command: structure to hold command representation
+ * @param list_tokens: linked list hold tokens of the command
+ */ 
 void tokens_to_command(struct command_t *command, struct list_head *list_tokens) {
+    // list of tokens to array of tokens
     int size = list_size(list_tokens) + 1;
     char *tokens_arr[size];
     list_to_arr(list_tokens, tokens_arr);
 
+    // Populate command struct
     command->num_tokens = size;
-    command->tokens = malloc(size * sizeof(char *));
 
+    // creates space in struct to hold array of tokens and copies the array to struct
+    command->tokens = malloc(size * sizeof(char *));
     for (int i = 0; i < size; ++i) {
         char *token = tokens_arr[i];
         command->tokens[i] = token;
     }
 }
 
-void print_command_list(struct list_head *head) {
-    if (!list_empty(head)) {
-        struct command_t *command; 
-        struct list_head *curr; 
+void print_command_struct(struct command_t *command) {
+    printf("*********************************\n");
 
-        // traverse subcommand tokens
-        for (curr = head->next; curr != head; curr = curr->next) {
-            // extract token
-            command = list_entry(curr, struct command_t, list);
-            print_command_struct(command);
-            // printf("num args = %d\n", command->num_tokens);
-        }
+    // ->num_tokens
+    printf("    num_tokens -> %d\n", command->num_tokens);
+    
+    // ->tokens
+    printf("    tokens -> ");
+    for (int i = 0; i < command->num_tokens; i++) {
+        printf("[%s] ", command->tokens[i]);
     }
+    printf("\n");
+
+
+    printf("*********************************\n");
+}
+
+void print_command_list(struct command_t *commands[], int num_cmds) {
+    for (int i=0; i<num_cmds; i++) 
+        print_command_struct(commands[i]);
 }
 
 /**
@@ -365,31 +355,34 @@ int handle_command(char *cmdline, int cmd_len) {
     if (cmdline == NULL) return -1;
     if (cmd_len <= 0) return -1;
 
-    // initilize linked list to hold tokens
-
-    // split command line into subcommands
+    // split command line into array of subcommands
     int sub_count = get_num_subcommands(cmdline, cmd_len);
-    
-    // struct command_t *commands_arr[sub_count];
-    LIST_HEAD(commands_list);
 
     char *subcommands_arr[sub_count]; 
     split_cmdline(subcommands_arr, cmdline, cmd_len);
 
-    // parse subcommands
+    // Create struct array to hold all command structures
+    struct command_t *commands_arr[sub_count];
+
+
+    // parse each subcommands
     for (int i=0; i<sub_count; i++) {
-        // Initialize list to hold subcommand
+        // Initialize token list
         LIST_HEAD(list_tokens);
+
+        // parse tokens from subcommand and store in list
         subcommand_parser(&list_tokens, subcommands_arr[i]);
 
+        // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
         tokens_to_command(command, &list_tokens);
-        
-        // print_command_struct(command);
-        list_add_tail(&command->list, &commands_list);
+
+        // add subcommand to list of commands
+        commands_arr[i] = command;
     }
 
-    print_command_list(&commands_list);
+    
+    print_command_list(commands_arr, sub_count);
 
     return 0;
 }
