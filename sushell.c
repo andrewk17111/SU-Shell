@@ -15,11 +15,11 @@
 #define CMD_BUFFER 512 
 
 int main(int argc, char *argv[]) {
-    char buffer[CMD_BUFFER];
+    char cmdline[CMD_BUFFER];
 
     while(1) {
-        fgets(buffer, CMD_BUFFER-1, stdin);
-        handle_command(buffer);   
+        fgets(cmdline, CMD_BUFFER-1, stdin);
+        handle_command(cmdline, strlen(cmdline));   
     }
     
 }

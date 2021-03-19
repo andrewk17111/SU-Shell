@@ -17,21 +17,15 @@ struct argument_t {
     struct list_head list;
 };
 
-/**
- * Returns a string that starts at the given index at the length given
- * 
- * @param str - The source string you want to get a part of
- * @param start - The starting index of the substring
- * @param length - The length of the substring
- * @return - The specified substring
- */
-char* sub_string(char* str, int start, int length);
 
 /**
- * Separates a string by spaces or quotes
+ * Driver function for the command parser functionality. This function initializes
+ * an empty linked list that will hold the parsed arguments. Then it simply 
+ * passes the linked list and the command line to the parsing function.
  * 
- * @param str - The source string you want split
- */
-void handle_command(char* str);
+ * @param cmdline: the command line given by the user that will be parsed
+ * @param len: length of cmdline string
+ **/ 
+void handle_command(char* cmdline, int len);
 
 #endif

@@ -15,6 +15,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "list.h"
 #include "internal.h"
 
@@ -148,6 +149,8 @@ void list_to_arr(struct list_head *head, char *arr[]) {
     for (curr = head->next; curr != head; curr = curr->next) {
         // extract the nodes structure
         entry = list_entry(curr, struct argument_t, list);
-        arr[i++] = entry->value;
+        char *val = entry->value;
+        arr[i++] = strdup(entry->value);
     }
+    arr[i] = NULL;
 }
