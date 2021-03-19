@@ -15,8 +15,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "list.h"
-#include "internal.h"
+#include "cmdline.h"
 
 /**
  * Adds the new item at to the list, at the front
@@ -112,24 +113,6 @@ int list_size(struct list_head *head) {
     return size; 
 }
 
-/**
- * Displays the content value of each element in the list provided, if the list is not empty
- * 
- * @head: the head node of a given linked list
- **/
-void list_print(struct list_head *head) {
-    if (!list_empty(head)) {
-        struct argument_t *entry; // the wrapping structure of each node in the list
-        struct list_head *curr; // the current node we are at in the traversal
-
-        // list traversal in order and stops when we cycled back to the start (circularly linked list)
-        for (curr = head->next; curr != head; curr = curr->next) {
-            // extract the nodes structure and print the contents (the value of the argument)
-            entry = list_entry(curr, struct argument_t, list);
-            printf("(%s)\n", entry->value);
-        }
-    }
-}
 
 /**
  * Converts linked list to array
@@ -137,17 +120,49 @@ void list_print(struct list_head *head) {
  * @head: the head node of a given linked list
  * 
  */ 
-void list_to_arr(struct list_head *head, char *arr[]) {
+void list_to_arr(struct list_head *head, char **arr) {
     if (list_empty(head)) return;
 
     int i = 0;
-    struct argument_t *entry; // the wrapping structure of each node in the list
+    struct token_t *token; // the wrapping structure of each node in the list
     struct list_head *curr; // the current node we are at in the traversal
 
     // list traversal in order and stops when we cycled back to the start (circularly linked list)
     for (curr = head->next; curr != head; curr = curr->next) {
         // extract the nodes structure
-        entry = list_entry(curr, struct argument_t, list);
-        arr[i++] = entry->value;
+        token = list_entry(curr, struct token_t, list);
+        arr[i++] = strdup(token->token_text);
+    }
+    arr[i] = NULL;
+}
+
+/**
+ * Displays the content value of each element in the list provided, if the list is not empty
+ * 
+ * @head: the head node of a given linked list
+ **/
+void print_subcommand(struct list_head *head) {
+    if (!list_empty(head)) {
+        struct token_t *token; 
+        struct list_head *curr; 
+
+        // traverse subcommand tokens
+        for (curr = head->next; curr != head; curr = curr->next) {
+            // extract token
+            token = list_entry(curr, struct token_t, list);
+            char *token_type;
+
+            if (token->token_type == TOKEN_NORMAL) {
+                token_type = "TOKEN_NORMAL";
+            }
+            if (token->token_type == TOKEN_REDIR) {
+                token_type = "TOKEN_REDIR";
+            }
+            if (token->token_type == TOKEN_FNAME) {
+                token_type = "TOKEN_REDIR";
+            }
+            printf("(%s [type: %s]) -> ", token->token_text, token_type);
+        }
+        printf("NULL\n");
     }
 }

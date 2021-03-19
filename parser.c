@@ -16,9 +16,15 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include "list.h"
-#include "internal.h"
+#include "cmdline.h"
 
-// Enum to hold all possible states the state machine can be in
+/**
+ * Definition of all possible states the state machine can be in
+ * 
+ * WHITESPACE: token is command, word, arguments, flags
+ * CHAR: token is a redirection (>, >>, <)
+ * QUOTE: token is a file name
+ */
 enum state_e {
     WHITESPACE,
     CHAR,
@@ -42,7 +48,7 @@ enum state_e {
  *      until we reached the end of that argument. This is used in tandem with 
  *      @sub_start to extract the complete substring 
  **/ 
-struct state_machine {
+struct state_machine_t {
     enum state_e state;
     int position;
     int cmd_len;
@@ -62,7 +68,7 @@ struct state_machine {
  * @param sm: state_machine struct that will be used by parser
  * @param cmdline: command input from the user
  **/ 
-void initialize_machine(struct state_machine *sm, char *cmdline) {
+void initialize_machine(struct state_machine_t *sm, char *cmdline) {
     // no characters encountered yet
     sm->state = WHITESPACE;        
     sm->position = 0;
@@ -94,16 +100,18 @@ char * sub_string(char* str, int start, int length) {
 
 
 /**
- * Creates a new node in the linked list of arguments
+ * Creates a new token node and adds the node to the tail of the given list
  * 
  * @param sm: state_machine struct
- * @param list_args: head of linked list
- * @param value: argument that was extracted
+ * @param head: head of linked list we are adding the node to
+ * @param text: holds a substring that is part of a command
  **/ 
-void create_list_node(struct state_machine *sm, struct list_head *list_args, char *value) {
-    struct argument_t *arg = malloc(sizeof(struct argument_t));
-    arg->value = value;
-    list_add_tail(&arg->list, list_args);
+void add_token_node(struct state_machine_t *sm, struct list_head *head, char *text) {
+    struct token_t *token = malloc(sizeof(struct token_t));
+    token->token_text = strdup(text);
+    token->token_type = TOKEN_NORMAL;
+
+    list_add_tail(&token->list, head);
 }
 
 
@@ -115,7 +123,7 @@ void create_list_node(struct state_machine *sm, struct list_head *list_args, cha
  * @param sm: state_machine struct
  * @param c: character the statemachine is reading
  **/ 
-void do_ws(struct state_machine *sm, char c) {
+void do_ws(struct state_machine_t *sm, char c) {
     // if quote character is a quote
     if (c == '"') {
         // sub string will begin at next position (we do not want to include the quotes)
@@ -136,6 +144,7 @@ void do_ws(struct state_machine *sm, char c) {
         // update state
         sm->state = CHAR;
     }
+    // otherwise more whitespace was encountered, do nothing
 }
 
 
@@ -146,15 +155,15 @@ void do_ws(struct state_machine *sm, char c) {
  * 
  * @param sm: state_machine struct
  * @param c: character the statemachine is reading
- * @param list_args: head of linked list
+ * @param list_tokens: linked list to hold the subcommand being parsed
  * @param cmdline: command input from user
  **/ 
-void do_char(struct state_machine *sm, char c, struct list_head *list_args, char *cmdline) {
+void do_char(struct state_machine_t *sm, char c, struct list_head *list_tokens, char *cmdline) {
     // is space(s) or newline, we found the end of substring
-    if (c == ' ' || c == '\t' || c == '\0' || c == '\n') {
+    if (c == ' ' || c == '\t' || c == '\0') {
         // get substring and add argument to list
-        char *value = sub_string(cmdline, sm->sub_start, sm->sub_len);
-        create_list_node(sm, list_args, value);
+        char *text = sub_string(cmdline, sm->sub_start, sm->sub_len);
+        add_token_node(sm, list_tokens, text);
 
         // update state
         sm->state = WHITESPACE;
@@ -173,19 +182,19 @@ void do_char(struct state_machine *sm, char c, struct list_head *list_args, char
  * 
  * @param sm: state_machine struct
  * @param c: character the statemachine is reading
- * @param list_args: linked list of arguments
+ * @param list_tokens: linked list to hold the subcommand being parsed
  * @param cmdline: command input from user
  **/ 
-void do_quote(struct state_machine *sm, char c, struct list_head *list_args, char *cmdline) {
+void do_quote(struct state_machine_t *sm, char c, struct list_head *list_tokens, char *cmdline) {
     // if not quote or end of input, increment substring length
-    if (c != '"' && c != '\0' && c != '\n') {
+    if (c != '"' && c != '\0') {
         sm->sub_len++;
     } 
     // we reached the end of quoted substring
     else {
         // get substring and add argument to list
-        char *value = sub_string(cmdline, sm->sub_start, --sm->sub_len);
-        create_list_node(sm, list_args, value);
+        char *text = sub_string(cmdline, sm->sub_start, --sm->sub_len);
+        add_token_node(sm, list_tokens, text);
         
         // update state
         sm->state = WHITESPACE;
@@ -200,12 +209,12 @@ void do_quote(struct state_machine *sm, char c, struct list_head *list_args, cha
  * the length of the cmdline input, its position in the cmdline, the machines state,
  * and positions of each substring that is encountered.
  * 
- * @param list_args: linked list to hold parsed arguments from input
+ * @param list_tokens: linked list to hold the subcommand being parsed
  * @param cmdline: the command that was entered by user
 **/
-void split_command(struct list_head *list_args, char *cmdline) {
+void subcommand_parser(struct list_head *list_tokens, char *cmdline) {
     // initialize statemachine
-    struct state_machine *sm = malloc(sizeof(struct state_machine));
+    struct state_machine_t *sm = malloc(sizeof(struct state_machine_t));
     initialize_machine(sm, cmdline);
 
     // initialize statemachine
@@ -217,12 +226,12 @@ void split_command(struct list_head *list_args, char *cmdline) {
         switch(sm->state) {
             // character state
             case CHAR:
-                do_char(sm, c, list_args, cmdline);
+                do_char(sm, c, list_tokens, cmdline);
                 break;
 
             // quote state
             case QUOTE:
-                do_quote(sm, c, list_args, cmdline);
+                do_quote(sm, c, list_tokens, cmdline);
                 break;
 
             // whitespace state
@@ -231,8 +240,108 @@ void split_command(struct list_head *list_args, char *cmdline) {
 
         }
     }
+
+    // Once state machine reaches end, if not in WHITESPACE state then a last substring remains
+    if (sm->state != WHITESPACE) {
+        char *value = sub_string(cmdline, sm->sub_start, sm->position);
+        add_token_node(sm, list_tokens, value);
+    }
+
 }
 
+
+/**
+ * Counts the number of subcommands present in a given command line. Each time
+ * a pipe is encountered we incremenet the counter and return the final value.
+ * 
+ * @param cmdline: the command that was entered by user
+ * @param cmd_len: length of command
+ * @return: interger value of the number of subcommands found
+ */ 
+int get_num_subcommands(char *cmdline, int cmd_len) {
+    int count = 1;
+    for (int i=0; i<cmd_len; i++) {
+        if (cmdline[i] == '|') {
+            count++;
+        }
+    }
+    return count;
+}
+
+
+/**
+ * Splits the command line input into subcommands each divided by a pipe.
+ * 
+ * @param cmdline: the command that was entered by user
+ * @param subcommands_arr: array to hold subcommand strings
+ * @param cmd_len: length of command
+ */ 
+void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
+    int idx = 0;   // index of subcommand array 
+    int start = 0, len = 0; // subcommand start index and length
+
+    for (int i=0; i<cmd_len; i++) {
+        // reached pipe or the end of the cmdline input
+        if (cmdline[i] == '|' || cmdline[i] == '\n') {
+            // copy subcommand to array
+            subcommands_arr[idx++] = strdup(sub_string(cmdline, start, len)); 
+
+            // next subcommand begins at next position (after the pipe) 
+            start = i+1;
+            len = 0;
+        } else {
+            len++; // still in subcommand, increment subcommand length
+        }
+    }
+}
+
+
+/**
+ * Takes a list of tokens which describe a single command and creates a data structure
+ * to represent all the information needed about the command.
+ * 
+ * 
+ * @param command: structure to hold command representation
+ * @param list_tokens: linked list hold tokens of the command
+ */ 
+void tokens_to_command(struct command_t *command, struct list_head *list_tokens) {
+    // list of tokens to array of tokens
+    int size = list_size(list_tokens) + 1;
+    char *tokens_arr[size];
+    list_to_arr(list_tokens, tokens_arr);
+
+    // Populate command struct
+    command->num_tokens = size;
+
+    // creates space in struct to hold array of tokens and copies the array to struct
+    command->tokens = malloc(size * sizeof(char *));
+    for (int i = 0; i < size; ++i) {
+        char *token = tokens_arr[i];
+        command->tokens[i] = token;
+    }
+}
+
+void print_command_struct(struct command_t *command) {
+    printf("*********************************\n");
+
+    // ->num_tokens
+    printf("    num_tokens -> %d\n", command->num_tokens);
+    
+    // ->tokens
+    printf("    tokens -> ");
+    for (int i = 0; i < command->num_tokens; i++) {
+        printf("[%s] ", command->tokens[i]);
+    }
+    printf("\n");
+
+
+    printf("*********************************\n");
+}
+
+void print_command_list(struct command_t *commands[], int num_cmds) {
+    for (int i=0; i<num_cmds; i++) 
+        print_command_struct(commands[i]);
+}
 
 /**
  * Driver function for the command parser functionality. This function initializes
@@ -240,21 +349,41 @@ void split_command(struct list_head *list_args, char *cmdline) {
  * passes the linked list and the command line to the parsing function.
  * 
  * @param cmdline: the command line given by the user that will be parsed
+ * @param cmd_len: length of command
  **/ 
-void handle_command(char *cmdline) {
-    // initilize linked list to hold tokens
-    LIST_HEAD(list_args);
+int handle_command(char *cmdline, int cmd_len) {
+    if (cmdline == NULL) return -1;
+    if (cmd_len <= 0) return -1;
 
-    // parse command
-    split_command(&list_args, cmdline);
+    // split command line into array of subcommands
+    int sub_count = get_num_subcommands(cmdline, cmd_len);
 
-    // convert list to array
-    int size = list_size(&list_args);
-    char *args[size];
-    list_to_arr(&list_args, args);
+    char *subcommands_arr[sub_count]; 
+    split_cmdline(subcommands_arr, cmdline, cmd_len);
 
-    // print array
-    for (int i=0; i<size; i++)
-        printf("args[%d] -> (%s)\n", i, args[i]);
+    // Create struct array to hold all command structures
+    struct command_t *commands_arr[sub_count];
+
+
+    // parse each subcommands
+    for (int i=0; i<sub_count; i++) {
+        // Initialize token list
+        LIST_HEAD(list_tokens);
+
+        // parse tokens from subcommand and store in list
+        subcommand_parser(&list_tokens, subcommands_arr[i]);
+
+        // translate token list to subcommand structure
+        struct command_t *command = malloc(sizeof(struct command_t));
+        tokens_to_command(command, &list_tokens);
+
+        // add subcommand to list of commands
+        commands_arr[i] = command;
+    }
+
     
+    print_command_list(commands_arr, sub_count);
+
+    return 0;
 }
+
