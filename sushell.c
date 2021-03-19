@@ -9,8 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "internal.h"
-#include "internal.h"
+#include "cmdline.h"
 
 #define CMD_BUFFER 512 
 
