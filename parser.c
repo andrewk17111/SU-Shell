@@ -296,17 +296,48 @@ void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
 }
 
 
-void token_list_to_arr (char **tokens_arr, struct list_head *list_tokens) {
+int token_list_to_arr (char *tokens_arr[], struct list_head *list_tokens) {
     int size = list_size(list_tokens);
-    tokens_arr = malloc(sizeof(struct token_t) * (size+1));
+    tokens_arr = malloc(sizeof(char *) * (size+1));
     list_to_arr(list_tokens, tokens_arr);
 
+    // for (int i=0; i<size+1; i++) {
+    //     printf("[%d] -> %s\n", i, tokens_arr[i]);
+    // }
 
-    for (int i=0; i<size+1; i++) {
-        printf("[%d] -> %s\n", i, tokens_arr[i]);
-    }
+    return size + 1;
 }
 
+
+void print_command_struct(struct command_t *command) {
+    printf("*********************************\n");
+
+    printf("    num_tokens -> %d\n", command->num_tokens);
+    
+    printf("    tokens -> ");
+    for (int i = 0; i < command->num_tokens; i++) {
+        printf("[%s] ", command->tokens[i]);
+    }
+    printf("\n");
+
+    printf("*********************************\n");
+}
+
+
+void tokens_to_command(struct command_t *command, struct list_head *list_tokens) {
+    command = malloc(sizeof(struct command_t));
+
+    // int size = token_list_to_arr(tokens_arr, list_tokens);
+
+    int size = list_size(list_tokens) + 1;
+    char *tokens_arr[size];
+    list_to_arr(list_tokens, tokens_arr);
+
+    command->num_tokens = size;
+    command->tokens = tokens_arr;
+    
+    // print_command_struct(command);
+}
 
 /**
  * Driver function for the command parser functionality. This function initializes
@@ -321,10 +352,11 @@ int handle_command(char *cmdline, int cmd_len) {
     if (cmd_len <= 0) return -1;
 
     // initilize linked list to hold tokens
-    LIST_HEAD(list_commands);
 
     // split command line into subcommands
     int sub_count = get_num_subcommands(cmdline, cmd_len);
+    
+    struct command_t *commands_arr[sub_count];
 
     char *subcommands_arr[sub_count]; 
     split_cmdline(subcommands_arr, cmdline, cmd_len);
@@ -335,12 +367,17 @@ int handle_command(char *cmdline, int cmd_len) {
         LIST_HEAD(list_tokens);
         subcommand_parser(&list_tokens, subcommands_arr[i]);
 
-        print_subcommand(&list_tokens);
+        struct command_t *command;
+        tokens_to_command(command, &list_tokens);
 
-        char **tokens_arr;
-        token_list_to_arr(tokens_arr, &list_tokens);
-        
+        commands_arr[i] = command;
+        print_command_struct(commands_arr[i]);
     }
+
+    // for (int i=0; i<sub_count; i++) {
+    //     print_command_struct(commands_arr[i]);
+    // }
+
 
     return 0;
 }

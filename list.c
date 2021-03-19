@@ -120,7 +120,7 @@ int list_size(struct list_head *head) {
  * @head: the head node of a given linked list
  * 
  */ 
-void list_to_arr(struct list_head *head, char *arr[]) {
+void list_to_arr(struct list_head *head, char **arr) {
     if (list_empty(head)) return;
 
     int i = 0;
@@ -134,25 +134,6 @@ void list_to_arr(struct list_head *head, char *arr[]) {
         arr[i++] = strdup(token->token_text);
     }
     arr[i] = NULL;
-}
-
-
-/**
- * TODO: DELETE - this is used only for debugging the lists
- */ 
-void print_commands(struct list_head *head) {
-    if (!list_empty(head)) {
-        struct command_t *subcommand; 
-        struct list_head *curr; 
-
-        // traverse list of commands
-        for (curr = head->next; curr != head; curr = curr->next) {
-            // extract single command
-            subcommand = list_entry(curr, struct command_t, list);
-            struct list_head *subcommand_head = &subcommand->list;
-            print_subcommand(subcommand_head);
-        }
-    }
 }
 
 /**

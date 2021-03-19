@@ -14,10 +14,6 @@
 
 /**
  * Definition of all types that any given token can be
- * 
- * TOKEN_NORMAL: token is command, word, arguments, flags
- * TOKEN_REDIR: token is a redirection (>, >>, <)
- * TOKEN_FNAME: token is a file name
  */
 enum token_types_e {
     TOKEN_NORMAL,
@@ -43,9 +39,23 @@ struct token_t {
 };
 
 
+/**
+ * Definition of all types of output a command may use
+ */
+enum output_types_e {
+    OUT_NORMAL,
+    OUT_FILE,
+    OUT_PIPE,
+};
+
+/**
+ * What we need to execute a command 
+ */ 
 struct command_t {
-    struct list_head tokens;
-    struct list_head list;
+    int num_tokens;
+    char **tokens;
+    enum output_types_e output_type;
+    const char *outfile;
 };
 
 
