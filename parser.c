@@ -324,8 +324,8 @@ void print_command_struct(struct command_t *command) {
 }
 
 
-void tokens_to_command(struct command_t *command, struct list_head *list_tokens) {
-    command = malloc(sizeof(struct command_t));
+void tokens_to_command(struct list_head *commands_list, struct list_head *list_tokens) {
+    struct command_t *command = malloc(sizeof(struct command_t));
 
     // int size = token_list_to_arr(tokens_arr, list_tokens);
 
@@ -334,9 +334,31 @@ void tokens_to_command(struct command_t *command, struct list_head *list_tokens)
     list_to_arr(list_tokens, tokens_arr);
 
     command->num_tokens = size;
-    command->tokens = tokens_arr;
+
+    for (int i = 0; i < size; ++i) {
+        printf("(%s) ", tokens_arr[i]);
+        // command->tokens[i] = malloc(sizeof(char *) * (strlen());
+        // // command->tokens[i] = strdup(tokens_arr[i]);
+        // command->tokens[i] = strdup("hello");
+    }
     
     // print_command_struct(command);
+    list_add_tail(&command->list, commands_list);
+}
+
+void print_command_list(struct list_head *head) {
+    if (!list_empty(head)) {
+        struct command_t *command; 
+        struct list_head *curr; 
+
+        // traverse subcommand tokens
+        for (curr = head->next; curr != head; curr = curr->next) {
+            // extract token
+            command = list_entry(curr, struct command_t, list);
+            print_command_struct(command);
+            // printf("num args = %d\n", command->num_tokens);
+        }
+    }
 }
 
 /**
@@ -356,7 +378,8 @@ int handle_command(char *cmdline, int cmd_len) {
     // split command line into subcommands
     int sub_count = get_num_subcommands(cmdline, cmd_len);
     
-    struct command_t *commands_arr[sub_count];
+    // struct command_t *commands_arr[sub_count];
+    LIST_HEAD(commands_list);
 
     char *subcommands_arr[sub_count]; 
     split_cmdline(subcommands_arr, cmdline, cmd_len);
@@ -367,14 +390,28 @@ int handle_command(char *cmdline, int cmd_len) {
         LIST_HEAD(list_tokens);
         subcommand_parser(&list_tokens, subcommands_arr[i]);
 
-        struct command_t *command;
-        tokens_to_command(command, &list_tokens);
 
-        commands_arr[i] = command;
-        print_command_struct(commands_arr[i]);
+        struct command_t *command = malloc(sizeof(struct command_t));
+
+        int size = list_size(&list_tokens) + 1;
+        char *tokens_arr[size];
+        list_to_arr(&list_tokens, tokens_arr);
+
+        command->num_tokens = size;
+        command->tokens = malloc(size * sizeof(char *));
+
+        for (int i = 0; i < size; ++i) {
+            char *token = tokens_arr[i];
+            command->tokens[i] = token;
+        }
+        
+        // print_command_struct(command);
+        list_add_tail(&command->list, &commands_list);
+
     }
 
-    // for (int i=0; i<sub_count; i++) {
+    print_command_list(&commands_list);
+        // for (int i=0; i<sub_count; i++) {
     //     print_command_struct(commands_arr[i]);
     // }
 

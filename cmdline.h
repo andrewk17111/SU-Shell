@@ -56,6 +56,8 @@ struct command_t {
     char **tokens;
     enum output_types_e output_type;
     const char *outfile;
+    
+    struct list_head list;
 };
 
 
