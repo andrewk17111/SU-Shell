@@ -268,21 +268,20 @@ int get_num_subcommands(char *cmdline, int cmd_len) {
  * @param cmd_len: length of command
  */ 
 void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
-    int idx = 0; // index of subcommand array 
-    int start, len = 0; // positions of subcommand start and length
+    int idx = 0;   // index of subcommand array 
+    int start = 0, len = 0; // subcommand start index and length
 
     for (int i=0; i<cmd_len; i++) {
         // reached pipe or the end of the cmdline input
         if (cmdline[i] == '|' || cmdline[i] == '\n') {
             // copy subcommand to array
-            subcommands_arr[idx++] = strdup(sub_string(cmdline, start, len));
+            subcommands_arr[idx++] = strdup(sub_string(cmdline, start, len)); 
+
             // next subcommand begins at next position (after the pipe) 
             start = i+1;
             len = 0;
-        } 
-        // still in subcommand, increment subcommand length
-        else {
-            len++;
+        } else {
+            len++; // still in subcommand, increment subcommand length
         }
     }
 }
@@ -298,7 +297,6 @@ void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
  * @param cmd_len: length of command
  **/ 
 int handle_command(char *cmdline, int cmd_len) {
-    printf("len = %d\n", cmd_len);
     if (cmdline == NULL) return -1;
     if (cmd_len <= 0) return -1;
 
@@ -311,11 +309,11 @@ int handle_command(char *cmdline, int cmd_len) {
     char *subcommands_arr[sub_count]; 
     split_cmdline(subcommands_arr, cmdline, cmd_len);
 
-    printf("************************\n");
-    for (int i=0; i<sub_count; i++) {
-        printf("[%d] -> (%s)\n", i, subcommands_arr[i]);
-    }
-    printf("************************\n");
+    // printf("************************\n");
+    // for (int i=0; i<sub_count; i++) {
+    //     printf("[%d] -> (%s)\n", i, subcommands_arr[i]);
+    // }
+    // printf("************************\n");
 
     // parse subcommands
     for (int i=0; i<sub_count; i++) {
