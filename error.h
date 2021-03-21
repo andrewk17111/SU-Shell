@@ -9,6 +9,14 @@
 // 
 // whats expected is shown after
 
+#define LOG_ERROR(...) { \
+    fprintf(stderr, __VA_ARGS__); \
+    return -1; }
+
+#define LOG_MSG(...) { \
+    printf(__VA_ARGS__); \
+    return -1; }
+
 #define ERROR_SETENV_ARG "Error - setenv takes two arguments\n"
 #define ERROR_UNSETENV_ARG "Error - unsetenv takes one argument\n"
 #define ERROR_GETENV_ARG "Error - getenv takes 0 or 1 arguments\n"

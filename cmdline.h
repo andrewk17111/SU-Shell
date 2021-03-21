@@ -43,7 +43,7 @@ struct token_t {
 /**
  * Redirection type for in and out
  */
-enum redirect_type {
+enum redirect_type_e {
     REDIRECT_NONE,
     FILE_IN,
     FILE_OUT_OVERWRITE,
@@ -60,25 +60,11 @@ struct command_t {
     int pipe_in;
     int pipe_out;
 
-    enum redirect_type file_in;
+    enum redirect_type_e file_in;
     const char *infile;
 
-    enum redirect_type file_out;
+    enum redirect_type_e file_out;
     const char *outfile;
-
-    /*// handles output within the command itself ( ls -la > out )
-    enum internal_output_types_e internal_output_type;
-    const char *outfile;
-
-    // handles input within the command itself   ( cat < out )
-    enum internal_input_types_e internal_input_type;
-    const char *infile;
-    
-    // handles input from another command ( | )
-    enum external_input_types_e external_output_type;
-
-    // handles output from another command ( | )
-    enum external_output_types_e external_output_type;*/
 
     struct list_head list;
 };

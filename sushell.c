@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "cmdline.h"
+#include "error.h"
 
 #define CMD_BUFFER 512 
 
@@ -26,4 +27,5 @@ int main(int argc, char *argv[]) {
         }
     }
     
+    return 0;
 }

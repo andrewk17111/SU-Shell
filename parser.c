@@ -302,7 +302,7 @@ int is_token_type_redirect(struct token_t token) {
  * @param command: structure to hold command representation
  * @param list_tokens: linked list hold tokens of the command
  */ 
-void tokens_to_command(struct command_t *command, struct list_head *list_tokens, int pipe_in, int pipe_out) {
+int tokens_to_command(struct command_t *command, struct list_head *list_tokens, int pipe_in, int pipe_out) {
     
     //Setup command
     command->file_in = REDIRECT_NONE;
@@ -318,12 +318,24 @@ void tokens_to_command(struct command_t *command, struct list_head *list_tokens,
             case TOKEN_FNAME_OUT_OVERWRITE:
                 command->outfile = strdup(tok->token_text);
                 command->file_out = FILE_OUT_OVERWRITE;
+                if (command->file_out != 0) {
+                    LOG_ERROR(ERROR_INVALID_CMDLINE);
+                }
+
                 break;
             case TOKEN_FNAME_OUT_APPEND:
+                if (command->file_out != 0) {
+                    LOG_ERROR(ERROR_INVALID_CMDLINE);
+                }
+                
                 command->outfile = strdup(tok->token_text);
                 command->file_out = FILE_OUT_APPEND;
                 break;
             case TOKEN_FNAME_IN:
+                if (command->file_out != 0) {
+                    LOG_ERROR(ERROR_INVALID_CMDLINE);
+                }
+
                 command->infile = strdup(tok->token_text);
                 command->file_in = FILE_IN;
                 break;
@@ -410,7 +422,6 @@ int handle_command(char *cmdline, int cmd_len) {
     // Create struct array to hold all command structures
     struct command_t *commands_arr[sub_count];
 
-
     // parse each subcommands
     for (int i = 0; i < sub_count; i++) {
         // Initialize token list
@@ -424,79 +435,35 @@ int handle_command(char *cmdline, int cmd_len) {
         do {
             char *tokstr = list_entry(current_token, struct token_t, list)->token_text;
 
-            if (strcmp(tokstr, ">") == 0) {
+            if (strcmp(tokstr, ">") == 0 || strcmp(tokstr, ">>") == 0 || strcmp(tokstr, "<") == 0) {
                 if (current_token->next == &list_tokens) {
-                    printf("%s", ERROR_INVALID_CMDLINE);
-                    return 0;
+                    LOG_ERROR(ERROR_INVALID_CMDLINE);
                 } else {
                     struct token_t *tok = list_entry(current_token->next, struct token_t, list);
-                    tok->token_type = TOKEN_FNAME_OUT_OVERWRITE;
-                    current_token = current_token->next;
-                    list_del(current_token->prev);
-                }
-            } else if (strcmp(tokstr, ">>") == 0) {
-                if (current_token->next == &list_tokens) {
-                    printf("%s", ERROR_INVALID_CMDLINE);
-                    return 0;
-                } else {
-                    struct token_t *tok = list_entry(current_token->next, struct token_t, list);
-                    tok->token_type = TOKEN_FNAME_OUT_APPEND;
-                    current_token = current_token->next;
-                    list_del(current_token->prev);
-                }
-            } else if (strcmp(tokstr, "<") == 0) {
-                if (current_token->next == &list_tokens) {
-                    printf("%s", ERROR_INVALID_CMDLINE);
-                    return 0;
-                } else {
-                    struct token_t *tok = list_entry(current_token->next, struct token_t, list);
-                    tok->token_type = TOKEN_FNAME_IN;
+
+                    if (strcmp(tokstr, ">") == 0)
+                        tok->token_type = TOKEN_FNAME_OUT_OVERWRITE;
+                    else if (strcmp(tokstr, ">>") == 0)
+                        tok->token_type = TOKEN_FNAME_OUT_APPEND;
+                    else if (strcmp(tokstr, "<") == 0)
+                        tok->token_type = TOKEN_FNAME_IN;
+
                     current_token = current_token->next;
                     list_del(current_token->prev);
                 }
             }
-
+            
             //Increment to next token
             current_token = current_token->next;
         } while (current_token != &list_tokens);
 
-        // current_token = list_tokens.next;
-        // do {
-        //     struct token_t *tok = list_entry(current_token, struct token_t, list);
-        //     printf("%s %d\n", tok->token_text, tok->token_type);
-            
-        //     //Increment to next token
-        //     current_token = current_token->next;
-        // } while (current_token != &list_tokens);
-        // ls -la > output -->  list_tokens = (ls)  (-la)  (>)  (output)
-        /**
-         *  1. loop over all tokens
-         *      - if ( is_redirection(curr_node) )      ->>>>     [ '<' , '>' , '>>' ]
-         *          - if ( curr_node->next != head )
-         *              - token = list_entry(curr_node->next)
-         * 
-         *              - if ( < )
-         *                    token.token_type = TOKEN_FNAME_IN
-         *              - if ( > )
-         *                    token.token_type = TOKEN_FNAME_OUT_OVERWRITE 
-         *              - if ( >> )
-         *                    token.token_type = TOKEN_FNAME_OUT_APPEND
-         * 
-         *              - remove redirection node
-         *          - else
-         *              - some kind of error message goes here (no file specified)
-         * 
-         *       grep .... | sort | less
-         */
-        /* 
-         *  2. Now we have only tokens that are words, flags and filenames
-         *      - tokens_to_command()
-         *              - 
-         */ 
-
         // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
-        tokens_to_command(command, &list_tokens, i != 0, i != sub_count - 1);
+        int result = tokens_to_command(command, &list_tokens, i != 0, i != sub_count - 1);
+
+        //Check if result is negative
+        if (result < 0)
+            return result;
 
         // add subcommand to list of commands
         commands_arr[i] = command;
