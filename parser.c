@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include "list.h"
 #include "cmdline.h"
+#include "error.h"
 
 /**
  * Definition of all possible states the state machine can be in
@@ -30,7 +31,6 @@ enum state_e {
     CHAR,
     QUOTE
 };
-
 
 /**
  * The command parser uses the state pattern to determine the next
@@ -57,7 +57,6 @@ struct state_machine_t {
     int sub_len;
 };
 
-
 /**
  * Initializes statemachine to starting state. The state machine is
  * initialized to begin at the 0th position of the command input
@@ -81,7 +80,6 @@ void initialize_machine(struct state_machine_t *sm, char *cmdline) {
     sm->sub_len = 0;
 }
 
-
 /**
  * Returns a string that starts at the given index at the length given
  * 
@@ -98,7 +96,6 @@ char * sub_string(char* str, int start, int length) {
     return output;
 }
 
-
 /**
  * Creates a new token node and adds the node to the tail of the given list
  * 
@@ -113,7 +110,6 @@ void add_token_node(struct state_machine_t *sm, struct list_head *head, char *te
 
     list_add_tail(&token->list, head);
 }
-
 
 /**
  * Handler when statemachine is in WHITESPACE state. Checks if the current character
@@ -147,7 +143,6 @@ void do_ws(struct state_machine_t *sm, char c) {
     // otherwise more whitespace was encountered, do nothing
 }
 
-
 /**
  * Handler when statemachine is in CHAR state. Checks if the current character
  * is blank space(s) - sets state accordingly. If char is neither a space(s) or
@@ -174,7 +169,6 @@ void do_char(struct state_machine_t *sm, char c, struct list_head *list_tokens, 
     }
 }
 
-
 /**
  * Handler when statemachine is in QUOTE state. Checks if statemachine reached end
  * of substring or command input. If char is neither a quote or newline, we found 
@@ -200,7 +194,6 @@ void do_quote(struct state_machine_t *sm, char c, struct list_head *list_tokens,
         sm->state = WHITESPACE;
     }
 }
-
 
 /**
  * Uses the statemachine pattern to iteratively move through the command line that
@@ -249,7 +242,6 @@ void subcommand_parser(struct list_head *list_tokens, char *cmdline) {
 
 }
 
-
 /**
  * Counts the number of subcommands present in a given command line. Each time
  * a pipe is encountered we incremenet the counter and return the final value.
@@ -267,7 +259,6 @@ int get_num_subcommands(char *cmdline, int cmd_len) {
     }
     return count;
 }
-
 
 /**
  * Splits the command line input into subcommands each divided by a pipe.
@@ -295,6 +286,13 @@ void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
     }
 }
 
+/**
+ * Checks if the token type is normal or redirection
+ * @param token: the token to check the type of
+ */
+int is_token_type_redirect(struct token_t token) {
+    return token.token_type == TOKEN_FNAME_IN || token.token_type == TOKEN_FNAME_OUT_APPEND || token.token_type == TOKEN_FNAME_OUT_OVERWRITE;
+}
 
 /**
  * Takes a list of tokens which describe a single command and creates a data structure
@@ -304,7 +302,40 @@ void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
  * @param command: structure to hold command representation
  * @param list_tokens: linked list hold tokens of the command
  */ 
-void tokens_to_command(struct command_t *command, struct list_head *list_tokens) {
+void tokens_to_command(struct command_t *command, struct list_head *list_tokens, int pipe_in, int pipe_out) {
+    
+    //Setup command
+    command->file_in = REDIRECT_NONE;
+    command->file_out = REDIRECT_NONE;
+    command->pipe_in = pipe_in;
+    command->pipe_out = pipe_out;
+
+    struct list_head *current_token = list_tokens->next;
+    do {
+        struct token_t *tok = list_entry(current_token, struct token_t, list);
+        
+        switch (tok->token_type) {
+            case TOKEN_FNAME_OUT_OVERWRITE:
+                command->outfile = strdup(tok->token_text);
+                command->file_out = FILE_OUT_OVERWRITE;
+                break;
+            case TOKEN_FNAME_OUT_APPEND:
+                command->outfile = strdup(tok->token_text);
+                command->file_out = FILE_OUT_APPEND;
+                break;
+            case TOKEN_FNAME_IN:
+                command->infile = strdup(tok->token_text);
+                command->file_in = FILE_IN;
+                break;
+        }
+
+        current_token = current_token->next;
+        //Remove from list if redirect token
+        if (is_token_type_redirect(*tok)) {
+            list_del(current_token->prev);
+        }
+    } while (current_token != list_tokens);
+    
     // list of tokens to array of tokens
     int size = list_size(list_tokens) + 1;
     char *tokens_arr[size];
@@ -334,6 +365,21 @@ void print_command_struct(struct command_t *command) {
     }
     printf("\n");
 
+    // ->file_in
+    printf("    file_in -> %d\n", command->file_in);
+    if (command->file_in) {
+        printf("    infile -> %s\n", command->infile);
+    }
+
+    // ->file_out
+    printf("    file_out -> %d\n", command->file_out);
+    if (command->file_in) {
+        printf("    outfile -> %s\n", command->outfile);
+    }
+
+    // ->pipe_in and pipe_out
+    printf("    pipe_in -> %d\n", command->pipe_in);
+    printf("    pipe_out -> %d\n", command->pipe_out);
 
     printf("*********************************\n");
 }
@@ -366,13 +412,62 @@ int handle_command(char *cmdline, int cmd_len) {
 
 
     // parse each subcommands
-    for (int i=0; i<sub_count; i++) {
+    for (int i = 0; i < sub_count; i++) {
         // Initialize token list
         LIST_HEAD(list_tokens);
 
         // parse tokens from subcommand and store in list
         subcommand_parser(&list_tokens, subcommands_arr[i]);
 
+        //Loop through all of the tokens to remove redirection tokens
+        struct list_head *current_token = list_tokens.next;
+        do {
+            char *tokstr = list_entry(current_token, struct token_t, list)->token_text;
+
+            if (strcmp(tokstr, ">") == 0) {
+                if (current_token->next == &list_tokens) {
+                    printf("%s", ERROR_INVALID_CMDLINE);
+                    return 0;
+                } else {
+                    struct token_t *tok = list_entry(current_token->next, struct token_t, list);
+                    tok->token_type = TOKEN_FNAME_OUT_OVERWRITE;
+                    current_token = current_token->next;
+                    list_del(current_token->prev);
+                }
+            } else if (strcmp(tokstr, ">>") == 0) {
+                if (current_token->next == &list_tokens) {
+                    printf("%s", ERROR_INVALID_CMDLINE);
+                    return 0;
+                } else {
+                    struct token_t *tok = list_entry(current_token->next, struct token_t, list);
+                    tok->token_type = TOKEN_FNAME_OUT_APPEND;
+                    current_token = current_token->next;
+                    list_del(current_token->prev);
+                }
+            } else if (strcmp(tokstr, "<") == 0) {
+                if (current_token->next == &list_tokens) {
+                    printf("%s", ERROR_INVALID_CMDLINE);
+                    return 0;
+                } else {
+                    struct token_t *tok = list_entry(current_token->next, struct token_t, list);
+                    tok->token_type = TOKEN_FNAME_IN;
+                    current_token = current_token->next;
+                    list_del(current_token->prev);
+                }
+            }
+
+            //Increment to next token
+            current_token = current_token->next;
+        } while (current_token != &list_tokens);
+
+        // current_token = list_tokens.next;
+        // do {
+        //     struct token_t *tok = list_entry(current_token, struct token_t, list);
+        //     printf("%s %d\n", tok->token_text, tok->token_type);
+            
+        //     //Increment to next token
+        //     current_token = current_token->next;
+        // } while (current_token != &list_tokens);
         // ls -la > output -->  list_tokens = (ls)  (-la)  (>)  (output)
         /**
          *  1. loop over all tokens
@@ -392,7 +487,8 @@ int handle_command(char *cmdline, int cmd_len) {
          *              - some kind of error message goes here (no file specified)
          * 
          *       grep .... | sort | less
-         * 
+         */
+        /* 
          *  2. Now we have only tokens that are words, flags and filenames
          *      - tokens_to_command()
          *              - 
@@ -400,7 +496,7 @@ int handle_command(char *cmdline, int cmd_len) {
 
         // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
-        tokens_to_command(command, &list_tokens);
+        tokens_to_command(command, &list_tokens, i != 0, i != sub_count - 1);
 
         // add subcommand to list of commands
         commands_arr[i] = command;
@@ -411,4 +507,3 @@ int handle_command(char *cmdline, int cmd_len) {
 
     return 0;
 }
-

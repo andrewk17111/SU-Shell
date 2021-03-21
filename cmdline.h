@@ -40,32 +40,14 @@ struct token_t {
     struct list_head list;
 };
 
-
 /**
- * Definition of all types of output a command may use
+ * Redirection type for in and out
  */
-enum internal_output_types_e {
-    OUT_NORMAL,
-    OUT_FILE,
-};
-
-/**
- * Definition of all types of input a command may use
- */
-enum internal_input_types_e {
-    IN_NORMAL,
-    IN_FILE,
-};
-
-
-enum external_input_types_e {
-    IN_NORMAL,
-    IN_PIPE,
-};
-
-enum external_output_types_e {
-    OUT_NORMAL,
-    OUT_PIPE,
+enum redirect_type {
+    REDIRECT_NONE,
+    FILE_IN,
+    FILE_OUT_OVERWRITE,
+    FILE_OUT_APPEND
 };
 
 /**
@@ -78,13 +60,13 @@ struct command_t {
     int pipe_in;
     int pipe_out;
 
-    int file_in;
+    enum redirect_type file_in;
     const char *infile;
 
-    int file_out;
+    enum redirect_type file_out;
     const char *outfile;
 
-    // handles output within the command itself ( ls -la > out )
+    /*// handles output within the command itself ( ls -la > out )
     enum internal_output_types_e internal_output_type;
     const char *outfile;
 
@@ -96,7 +78,7 @@ struct command_t {
     enum external_input_types_e external_output_type;
 
     // handles output from another command ( | )
-    enum external_output_types_e external_output_type;
+    enum external_output_types_e external_output_type;*/
 
     struct list_head list;
 };
