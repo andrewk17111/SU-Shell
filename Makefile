@@ -11,15 +11,15 @@ all: sushell
 parser: parser.o
 	gcc -o parser list.c $< $(LDFLAGS) 
 
-sushell: sushell.o
-	gcc -o sushell runner.c parser.c list.c $< $(LDFLAGS) 
+sushell: sush.o
+	gcc -o sush runner.c parser.c list.c $< $(LDFLAGS) 
 
-run: sushell
-	./sushell
+run: sush
+	./sush
 
-valgrind: sushell
+valgrind: sush
 	valgrind --leak-check=full ./sushell
 
 clean:
-	rm sushell *.o 
+	rm sush *.o 
 	rm -fr *.dSYM

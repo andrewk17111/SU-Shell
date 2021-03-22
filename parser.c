@@ -150,6 +150,19 @@ void add_token_node(struct state_machine_t *sm, struct list_head *head, char *te
 
 
 /**
+ * Removes token node from linked list and frees token memory
+ * 
+ * @param node: node to remove from list
+ * @param token: token of the node to free
+ */ 
+void remove_token_node(struct list_head *node, struct token_t *token) {
+    list_del(node);
+    free(token->token_text);
+    free(token);
+}
+
+
+/**
  * Frees array of subcommand strings after parsing is complete
  * 
  * @param subcommands_arr: array of subcommand strings to free
@@ -299,6 +312,17 @@ int set_redirection_in(struct command_t *command, struct token_t *token, enum re
     return RETURN_SUCCESS;
 }
 
+/**
+ * Checks if token type is associated with redirection. Filenames that proceed a redirection symbol in the 
+ * command have these types which describe how to interact with the file.
+ * 
+ * @param token_type: type of token
+ * 
+ * @return integer true or false
+ */ 
+int is_redirection_token(enum token_types_e token_type) {
+    return (token_type == TOKEN_FNAME_OUT_OVERWRITE || token_type == TOKEN_FNAME_OUT_APPEND || token_type == TOKEN_FNAME_IN);
+}
 
 /**
  * Iterates over all tokens to determine if redirection is present. If redirection is
@@ -319,23 +343,32 @@ int set_command_redirections(struct command_t *command, struct list_head *head) 
         token = list_entry(curr, struct token_t, list);
         enum token_types_e token_type = token->token_type;
 
-        // >
-        if (token_type == TOKEN_FNAME_OUT_OVERWRITE) {
-            rc = set_redirection_out(command, token, FILE_OUT_OVERWRITE);
-        }
+        if (is_redirection_token(token_type)) {
 
-        // >>
-        if (token_type == TOKEN_FNAME_OUT_APPEND) {
-            rc = set_redirection_out(command, token, FILE_OUT_APPEND);
+            // >
+            if (token_type == TOKEN_FNAME_OUT_OVERWRITE) {
+                rc = set_redirection_out(command, token, FILE_OUT_OVERWRITE);
+            }
+
+            // >>
+            if (token_type == TOKEN_FNAME_OUT_APPEND) {
+                rc = set_redirection_out(command, token, FILE_OUT_APPEND);
+            }
+            
+            // <
+            if (token_type == TOKEN_FNAME_IN) {
+                rc = set_redirection_in(command, token, FILE_IN);
+            }
+
+            // if any errors, return error
+            if (rc < 0) return RETURN_ERROR;
+
+            // move loop to next node and delete the filename node
+            struct list_head *next = curr->next;
+            remove_token_node(curr, token);
+            curr = next;
         }
         
-        // <
-        if (token_type == TOKEN_FNAME_IN) {
-            rc = set_redirection_in(command, token, FILE_IN);
-        }
-
-        // if any errors, return error
-        if (rc < 0) return RETURN_ERROR;
     }
 
     return RETURN_SUCCESS; 
@@ -445,9 +478,7 @@ int handle_redirection_tokens(struct list_head *head) {
 
                 // move loop to next node and delete the redirection node
                 struct list_head *next = curr->next;
-                list_del(curr);
-                free(token->token_text);
-                free(token);
+                remove_token_node(curr, token);
                 curr = next;
             }
         }
