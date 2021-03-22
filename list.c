@@ -147,7 +147,10 @@ void clear_list(struct list_head *list) {
     // traverse until no nodes remain in list
     while (!list_empty(list)) {
         token = list_entry(list->next, struct token_t, list);
-        list_del(&token->list); // free node
+
+        free(token->token_text);
+
+        list_del(&token->list);
         free(token);            // free entire token struct allocation
     }
 }

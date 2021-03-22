@@ -62,6 +62,19 @@ int get_num_subcommands(char *cmdline) {
 }
 
 
+void clean_up(struct command_t *commands_arr[], int num_commands) {
+    for (int i=0; i<num_commands; i++) {
+        
+        int num_tokens = commands_arr[i]->num_tokens;
+        for (int j=0; j<num_tokens; j++) {
+            free(commands_arr[i]->tokens[j]);
+        }
+        free(commands_arr[i]->tokens);
+        free(commands_arr[i]);
+    }
+    free(commands_arr);
+}
+
 /**
  * Takes the command line input, parses the command and executes the array of commands
  * 
@@ -82,5 +95,8 @@ int do_command(char *cmdline) {
     if (rc < 0) return rc;
 
     print_command_list(commands_arr, num_commands);
+
+    // clean_up(commands_arr, num_commands);
+
     return 0;
 }

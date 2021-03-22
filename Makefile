@@ -17,6 +17,9 @@ sushell: sushell.o
 run: sushell
 	./sushell
 
+valgrind: sushell
+	valgrind --leak-check=full ./sushell
+
 clean:
 	rm sushell *.o 
 	rm -fr *.dSYM

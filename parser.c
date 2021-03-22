@@ -97,7 +97,9 @@ void split_cmdline(char *subcommands_arr[], char *cmdline) {
         // reached pipe or the end of the cmdline input
         if (cmdline[i] == '|' || cmdline[i] == '\n') {
             // copy subcommand to array
-            subcommands_arr[idx++] = strdup(sub_string(cmdline, start, len)); 
+            char *subcommand = sub_string(cmdline, start, len);
+            subcommands_arr[idx++] = strdup(subcommand);
+            free(subcommand); 
 
             // next subcommand begins at next position (after the pipe) 
             start = i+1;
@@ -146,6 +148,7 @@ void add_token_node(struct state_machine_t *sm, struct list_head *head, char *te
     token->token_type = TOKEN_NORMAL;
 
     list_add_tail(&token->list, head);
+
 }
 
 
@@ -229,7 +232,6 @@ void do_quote(struct state_machine_t *sm, char c, struct list_head *list_tokens,
         // get substring and add argument to list
         char *text = sub_string(cmdline, sm->sub_start, --sm->sub_len);
         add_token_node(sm, list_tokens, text);
-        
         // update state
         sm->state = WHITESPACE;
     }
@@ -293,7 +295,7 @@ int set_redirection_in(struct command_t *command, struct token_t *token, enum re
  * @return whether malformed command was found
  */ 
 int set_command_redirections(struct command_t *command, struct list_head *head) {
-    int rc;
+    int rc = 0;
 
     struct list_head *curr;
     struct token_t *token;
@@ -361,7 +363,7 @@ void set_command_tokens(struct command_t *command, struct list_head *head) {
  * @return whether the conversion to command structure of successful or not
  */ 
 int tokens_to_command(struct command_t *command, struct list_head *head, int pipe_in, int pipe_out) {
-    int rc; 
+    int rc = 0; 
 
     // Initialize no file input/output
     command->file_in = REDIRECT_NONE;
@@ -477,6 +479,17 @@ void subcommand_processor(struct list_head *list_tokens, char *cmdline) {
         add_token_node(sm, list_tokens, value);
     }
 
+    free(sm);
+
+}
+
+
+void free_subcommands(char *subcommands_arr[], int num_commands) {
+
+    for (int i=0; i<num_commands; i++) {
+        free(subcommands_arr[i]);
+    }
+
 }
 
 
@@ -495,7 +508,7 @@ void subcommand_processor(struct list_head *list_tokens, char *cmdline) {
  **/ 
 int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline) {
 
-    int rc; // catch return codes
+    int rc = 0; // catch return codes
 
     char *subcommands_arr[num_commands]; 
     split_cmdline(subcommands_arr, cmdline);
@@ -524,9 +537,12 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
         // add command structure to list of commands
         commands_arr[i] = command;
 
-        // free list of tokens
+        // free list memory
         clear_list(&list_tokens);
     }
+
+
+    // free_subcommands(subcommands_arr, num_commands);
 
     return 0;
 }
