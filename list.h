@@ -69,8 +69,6 @@ void list_print(struct list_head *head);
 
 void list_to_arr(struct list_head *head, char *arr[]);
 
-void print_commands(struct list_head *cmd_list_head);
-void print_subcommand(struct list_head *head);
-
+void clear_list(struct list_head *list);
 
 #endif

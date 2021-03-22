@@ -12,9 +12,15 @@
 #ifndef CMDLINE_H
 #define CMDLINE_H
 
-/**
- * Definition of all types that any given token can be
- */
+// constants for code readability for parser functionality
+#define TRUE 1
+#define FALSE 0 
+
+#define RETURN_ERROR -1 
+#define RETURN_SUCCESS 0 
+
+
+// Definition of all types that any given token can be
 enum token_types_e {
     TOKEN_NORMAL,
     TOKEN_REDIR,
@@ -23,6 +29,14 @@ enum token_types_e {
     TOKEN_FNAME_OUT_APPEND,
 };
 
+
+// Definition of all types of redirection
+enum redirect_type_e {
+    REDIRECT_NONE,
+    FILE_IN,
+    FILE_OUT_OVERWRITE,
+    FILE_OUT_APPEND
+};
 
 /**
  * The command parser extracts parts of a given command which we call tokens. 
@@ -40,19 +54,22 @@ struct token_t {
     struct list_head list;
 };
 
-/**
- * Redirection type for in and out
- */
-enum redirect_type_e {
-    REDIRECT_NONE,
-    FILE_IN,
-    FILE_OUT_OVERWRITE,
-    FILE_OUT_APPEND
-};
 
 /**
- * What we need to execute a command 
- */ 
+ * The command data structure which holds all information needed by the shell to execute the command
+ * 
+ * @num_tokens: number of tokens that were parsed
+ * @tokens: array of token strings
+ * 
+ * @pipe_in: command reads from pipe
+ * @pipe_out: command writes to pipe
+ * 
+ * @file_in: command writes to file
+ * @infile: name of file to write to 
+ * 
+ * @file_out: command reads from file
+ * @outfile: name of file to read from
+ **/ 
 struct command_t {
     int num_tokens;
     char **tokens;
@@ -61,25 +78,36 @@ struct command_t {
     int pipe_out;
 
     enum redirect_type_e file_in;
-    const char *infile;
+    char *infile;
 
     enum redirect_type_e file_out;
-    const char *outfile;
-
-    struct list_head list;
+    char *outfile;
 };
 
 
 /**
- * Driver function for the command parser functionality. This function initializes
- * an empty linked list that will hold the parsed arguments. Then it simply 
- * passes the linked list and the command line to the parsing function.
+ * Takes the command line input, parses the command and executes the array of commands
  * 
+ * @param cmdline: the command that was entered by user
+ * 
+ * @return: status of command(s) execution
+ */ 
+int do_command(char *cmdline);
+
+
+/**
+ * Driver function for the command parser functionality. Takes a single commmand line
+ * input, breaks it into an array of subcommands and parses each. Each subcommand is tokenized
+ * and converted a command structure and added to the array of commands. 
+ * 
+ * When parser finishes, a complete array of commands is populated and ready to be executed by the shell.
+ * 
+ * @param commands_arr: array to hold command stucts
+ * @param num_commands: number of subcommands to parse
  * @param cmdline: the command line given by the user that will be parsed
- * @param len: length of cmdline string
  * 
- * @return: status of execution
+ * @return status of command line parsing
  **/ 
-int handle_command(char* cmdline, int len);
+int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline);
 
 #endif

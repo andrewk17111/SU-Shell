@@ -19,6 +19,7 @@
 #include "list.h"
 #include "cmdline.h"
 
+
 /**
  * Adds the new item at to the list, at the front
  * 
@@ -94,6 +95,7 @@ int list_empty(struct list_head *head) {
     return 0; // not empty
 }
 
+
 /**
  * Returns the length of the linked list given head node
  * 
@@ -136,33 +138,27 @@ void list_to_arr(struct list_head *head, char **arr) {
     arr[i] = NULL;
 }
 
+
 /**
- * Displays the content value of each element in the list provided, if the list is not empty
+ * Free all allocated memory to hold list of tokens
  * 
- * @head: the head node of a given linked list
- **/
-void print_subcommand(struct list_head *head) {
-    if (!list_empty(head)) {
-        struct token_t *token; 
-        struct list_head *curr; 
+ * @list: head node of list to free
+ **/ 
+void clear_list(struct list_head *list) {
+    struct token_t *token; // the wrapping structure of each node in the list
 
-        // traverse subcommand tokens
-        for (curr = head->next; curr != head; curr = curr->next) {
-            // extract token
-            token = list_entry(curr, struct token_t, list);
-            char *token_type;
+    // traverse until no nodes remain in list
+    while (!list_empty(list)) {
+        // extract token
+        token = list_entry(list->next, struct token_t, list);
 
-            if (token->token_type == TOKEN_NORMAL) {
-                token_type = "TOKEN_NORMAL";
-            }
-            if (token->token_type == TOKEN_REDIR) {
-                token_type = "TOKEN_REDIR";
-            }
-            /*if (token->token_type == TOKEN_FNAME) {
-                token_type = "TOKEN_REDIR";
-            }*/
-            printf("(%s [type: %s]) -> ", token->token_text, token_type);
-        }
-        printf("NULL\n");
+        // free token text
+        free(token->token_text);
+
+        // remove node from list
+        list_del(&token->list);
+
+        // free node
+        free(token);           
     }
 }
