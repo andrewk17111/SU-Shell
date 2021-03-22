@@ -18,7 +18,9 @@
 enum token_types_e {
     TOKEN_NORMAL,
     TOKEN_REDIR,
-    TOKEN_FNAME
+    TOKEN_FNAME_IN,
+    TOKEN_FNAME_OUT_OVERWRITE,
+    TOKEN_FNAME_OUT_APPEND,
 };
 
 
@@ -38,14 +40,14 @@ struct token_t {
     struct list_head list;
 };
 
-
 /**
- * Definition of all types of output a command may use
+ * Redirection type for in and out
  */
-enum output_types_e {
-    OUT_NORMAL,
-    OUT_FILE,
-    OUT_PIPE,
+enum redirect_type_e {
+    REDIRECT_NONE,
+    FILE_IN,
+    FILE_OUT_OVERWRITE,
+    FILE_OUT_APPEND
 };
 
 /**
@@ -54,9 +56,16 @@ enum output_types_e {
 struct command_t {
     int num_tokens;
     char **tokens;
-    enum output_types_e output_type;
+
+    int pipe_in;
+    int pipe_out;
+
+    enum redirect_type_e file_in;
+    const char *infile;
+
+    enum redirect_type_e file_out;
     const char *outfile;
-    
+
     struct list_head list;
 };
 

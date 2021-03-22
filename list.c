@@ -158,9 +158,9 @@ void print_subcommand(struct list_head *head) {
             if (token->token_type == TOKEN_REDIR) {
                 token_type = "TOKEN_REDIR";
             }
-            if (token->token_type == TOKEN_FNAME) {
+            /*if (token->token_type == TOKEN_FNAME) {
                 token_type = "TOKEN_REDIR";
-            }
+            }*/
             printf("(%s [type: %s]) -> ", token->token_text, token_type);
         }
         printf("NULL\n");
