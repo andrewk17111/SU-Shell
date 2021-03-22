@@ -74,6 +74,8 @@ struct command_t {
     int num_tokens;
     char **tokens;
 
+    char *cmd_name;
+
     int pipe_in;
     int pipe_out;
 

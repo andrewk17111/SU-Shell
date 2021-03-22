@@ -11,6 +11,8 @@ void print_command_struct(struct command_t *command) {
 
     // ->num_tokens
     printf("    num_tokens -> %d\n", command->num_tokens);
+
+    printf("    cmd_name -> %s\n", command->cmd_name);
     
     // ->tokens
     printf("    tokens -> ");
@@ -78,9 +80,14 @@ void clean_up(struct command_t *commands_arr[], int num_commands) {
         }
         // free token array
         free(commands_arr[i]->tokens);
+
         // free filename fields
         free(commands_arr[i]->outfile);
         free(commands_arr[i]->infile);
+        
+        // free command name
+        // free(commands_arr[i]->cmd_name);
+        
         // free command struct
         free(commands_arr[i]);
     }
