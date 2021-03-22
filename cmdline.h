@@ -12,10 +12,15 @@
 #ifndef CMDLINE_H
 #define CMDLINE_H
 
+// constants for code readability for parser functionality
+#define TRUE 1
+#define FALSE 0 
 
-/**
- * Definition of all types that any given token can be
- */
+#define RETURN_ERROR -1 
+#define RETURN_SUCCESS 0 
+
+
+// Definition of all types that any given token can be
 enum token_types_e {
     TOKEN_NORMAL,
     TOKEN_REDIR,
@@ -25,9 +30,7 @@ enum token_types_e {
 };
 
 
-/**
- * Definition of all types of redirection
- */
+// Definition of all types of redirection
 enum redirect_type_e {
     REDIRECT_NONE,
     FILE_IN,
@@ -53,7 +56,7 @@ struct token_t {
 
 
 /**
- * The command datastructure which holds all information needed by the shell to execute the command
+ * The command data structure which holds all information needed by the shell to execute the command
  * 
  * @num_tokens: number of tokens that were parsed
  * @tokens: array of token strings
@@ -66,8 +69,6 @@ struct token_t {
  * 
  * @file_out: command reads from file
  * @outfile: name of file to read from
- * 
- * @list: head of 
  **/ 
 struct command_t {
     int num_tokens;
@@ -105,7 +106,7 @@ int do_command(char *cmdline);
  * @param num_commands: number of subcommands to parse
  * @param cmdline: the command line given by the user that will be parsed
  * 
- * @return status of command parsing
+ * @return status of command line parsing
  **/ 
 int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline);
 

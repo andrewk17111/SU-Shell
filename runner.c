@@ -71,15 +71,20 @@ int get_num_subcommands(char *cmdline) {
 void clean_up(struct command_t *commands_arr[], int num_commands) {
     for (int i=0; i<num_commands; i++) {
 
+        // free each token in array
         int num_toks = commands_arr[i]->num_tokens;
         for (int j=0;j<num_toks; j++ ) {
             free(commands_arr[i]->tokens[j]);
         }
+        // free token array
         free(commands_arr[i]->tokens);
+        // free filename fields
         free(commands_arr[i]->outfile);
         free(commands_arr[i]->infile);
+        // free command struct
         free(commands_arr[i]);
     }
+    // free array that held commands
     free(commands_arr);
 }
 
@@ -107,7 +112,7 @@ int do_command(char *cmdline) {
      * TODO: This is where we want to execute the commands 
      * 
      */
-    // print_command_list(commands_arr, num_commands);
+    print_command_list(commands_arr, num_commands);
     
 
     // release all memory allocated to hold commands

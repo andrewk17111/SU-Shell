@@ -19,6 +19,7 @@
 #include "list.h"
 #include "cmdline.h"
 
+
 /**
  * Adds the new item at to the list, at the front
  * 
@@ -94,6 +95,7 @@ int list_empty(struct list_head *head) {
     return 0; // not empty
 }
 
+
 /**
  * Returns the length of the linked list given head node
  * 
@@ -136,8 +138,9 @@ void list_to_arr(struct list_head *head, char **arr) {
     arr[i] = NULL;
 }
 
+
 /**
- * Free all allocated memory to hold list content
+ * Free all allocated memory to hold list of tokens
  * 
  * @list: head node of list to free
  **/ 
@@ -146,11 +149,16 @@ void clear_list(struct list_head *list) {
 
     // traverse until no nodes remain in list
     while (!list_empty(list)) {
+        // extract token
         token = list_entry(list->next, struct token_t, list);
 
+        // free token text
         free(token->token_text);
 
+        // remove node from list
         list_del(&token->list);
-        free(token);            // free entire token struct allocation
+
+        // free node
+        free(token);           
     }
 }
