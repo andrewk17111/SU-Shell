@@ -19,6 +19,41 @@
 #include "cmdline.h"
 #include "error.h"
 
+
+void print_command_struct(struct command_t *command) {
+    printf("*********************************\n");
+
+    // ->num_tokens
+    printf("    num_tokens -> %d\n", command->num_tokens);
+    
+    // ->tokens
+    printf("    tokens -> ");
+    for (int i = 0; i < command->num_tokens; i++) {
+        printf("[%s] ", command->tokens[i]);
+    }
+    printf("\n");
+
+    // ->file_in
+    printf("    file_in -> %d\n", command->file_in);
+    printf("    infile -> %s\n", command->infile);
+
+    // ->file_out
+    printf("    file_out -> %d\n", command->file_out);
+    printf("    outfile -> %s\n", command->outfile);
+
+    // ->pipe_in and pipe_out
+    printf("    pipe_in -> %d\n", command->pipe_in);
+    printf("    pipe_out -> %d\n", command->pipe_out);
+
+    printf("*********************************\n");
+}
+
+void print_command_list(struct command_t *commands[], int num_cmds) {
+    for (int i=0; i<num_cmds; i++) 
+        print_command_struct(commands[i]);
+}
+
+
 /**
  * Definition of all possible states the state machine can be in
  * 
@@ -31,6 +66,7 @@ enum state_e {
     CHAR,
     QUOTE
 };
+
 
 /**
  * The command parser uses the state pattern to determine the next
@@ -57,6 +93,72 @@ struct state_machine_t {
     int sub_len;
 };
 
+
+/**
+ * Counts the number of subcommands present in a given command line. Each time
+ * a pipe is encountered we incremenet the counter and return the final value.
+ * 
+ * @param cmdline: the command that was entered by user
+ * @param cmd_len: length of command
+ * 
+ * @return: interger value of the number of subcommands found
+ */ 
+int get_num_subcommands(char *cmdline, int cmd_len) {
+    int count = 1;
+    for (int i=0; i<cmd_len; i++) {
+        if (cmdline[i] == '|') {
+            count++;
+        }
+    }
+    return count;
+}
+
+
+/**
+ * Returns a string that starts at the given index at the length given
+ * 
+ * @param str - The source string you want to get a part of
+ * @param start - The starting index of the substring
+ * @param length - The length of the substring
+ * 
+ * @return extracted substring
+ **/
+char * sub_string(char* str, int start, int length) {
+    char* output = calloc(length + 1, sizeof(char));
+    for (int i = start; i < (start + length) && i < strlen(str); i++) {
+        output[i - start] = str[i];
+    }
+    return output;
+}
+
+
+/**
+ * Splits the command line input into subcommands each divided by a pipe.
+ * 
+ * @param cmdline: the command that was entered by user
+ * @param subcommands_arr: array to hold subcommand strings
+ * @param cmd_len: length of command
+ */ 
+void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
+    int idx = 0;   // index of subcommand array 
+    int start = 0, len = 0; // subcommand start index and length
+
+    for (int i=0; i<cmd_len; i++) {
+        // reached pipe or the end of the cmdline input
+        if (cmdline[i] == '|' || cmdline[i] == '\n') {
+            // copy subcommand to array
+            subcommands_arr[idx++] = strdup(sub_string(cmdline, start, len)); 
+
+            // next subcommand begins at next position (after the pipe) 
+            start = i+1;
+            len = 0;
+        } else {
+            len++; // still in subcommand, increment subcommand length
+        }
+    }
+}
+
+
 /**
  * Initializes statemachine to starting state. The state machine is
  * initialized to begin at the 0th position of the command input
@@ -80,21 +182,6 @@ void initialize_machine(struct state_machine_t *sm, char *cmdline) {
     sm->sub_len = 0;
 }
 
-/**
- * Returns a string that starts at the given index at the length given
- * 
- * @param str - The source string you want to get a part of
- * @param start - The starting index of the substring
- * @param length - The length of the substring
- * @return extracted substring
- **/
-char * sub_string(char* str, int start, int length) {
-    char* output = calloc(length + 1, sizeof(char));
-    for (int i = start; i < (start + length) && i < strlen(str); i++) {
-        output[i - start] = str[i];
-    }
-    return output;
-}
 
 /**
  * Creates a new token node and adds the node to the tail of the given list
@@ -110,6 +197,7 @@ void add_token_node(struct state_machine_t *sm, struct list_head *head, char *te
 
     list_add_tail(&token->list, head);
 }
+
 
 /**
  * Handler when statemachine is in WHITESPACE state. Checks if the current character
@@ -143,6 +231,7 @@ void do_ws(struct state_machine_t *sm, char c) {
     // otherwise more whitespace was encountered, do nothing
 }
 
+
 /**
  * Handler when statemachine is in CHAR state. Checks if the current character
  * is blank space(s) - sets state accordingly. If char is neither a space(s) or
@@ -168,6 +257,7 @@ void do_char(struct state_machine_t *sm, char c, struct list_head *list_tokens, 
         sm->sub_len++;
     }
 }
+
 
 /**
  * Handler when statemachine is in QUOTE state. Checks if statemachine reached end
@@ -195,6 +285,203 @@ void do_quote(struct state_machine_t *sm, char c, struct list_head *list_tokens,
     }
 }
 
+
+/**
+ * Sets commands redirection out fields. First checks if this redirection was already specified and if so we
+ * have a malformed command, return error. Otherwise the command struct is updated with the appropriate identifiers
+ * 
+ * @param command: structure to hold command representation
+ * @param token: token which holds the file associated with the redirection
+ * @param token_type: type of redirection 
+ * 
+ * @return whether malformed command was found
+ */ 
+int set_redirection_out(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
+    if (command->file_out != 0) {
+        LOG_ERROR(ERROR_INVALID_CMDLINE);
+        return -1;
+    }
+
+    command->outfile = strdup(token->token_text);
+    command->file_out = token_type;
+
+    return 0;
+}
+
+
+/**
+ * Sets commands redirection in fields. First checks if this redirection was already specified and if so we
+ * have a malformed command, return error. Otherwise the command struct is updated with the appropriate identifiers
+ * 
+ * @param command: structure to hold command representation
+ * @param token: token which holds the file associated with the redirection
+ * @param token_type: type of redirection 
+ * 
+ * @return whether malformed command was found
+ */ 
+int set_redirection_in(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
+    if (command->file_in != 0) {
+        LOG_ERROR(ERROR_INVALID_CMDLINE);
+        return -1;
+    }
+
+    command->infile = strdup(token->token_text);
+    command->file_in = token_type;
+
+    return 0;
+}
+
+
+/**
+ * Iterates over all tokens to determine if redirection is present. If redirection is
+ * found, updates the command structure accordingly to describe what kind of redirection
+ * to handle and the corresponding filename that was specified for the redirection.
+ * 
+ * @param command: structure to hold command representation
+ * @param head: linked list hold tokens of the command
+ * 
+ * @return whether malformed command was found
+ */ 
+int set_command_redirections(struct command_t *command, struct list_head *head) {
+    int rc;
+
+    struct list_head *curr;
+    struct token_t *token;
+    for (curr = head->next; curr != head; curr = curr->next) {
+        token = list_entry(curr, struct token_t, list);
+        enum token_types_e token_type = token->token_type;
+
+        // >
+        if (token_type == TOKEN_FNAME_OUT_OVERWRITE) {
+            rc = set_redirection_out(command, token, FILE_OUT_OVERWRITE);
+        }
+
+        // >>
+        if (token_type == TOKEN_FNAME_OUT_APPEND) {
+            rc = set_redirection_out(command, token, FILE_OUT_APPEND);
+        }
+        
+        // <
+        if (token_type == TOKEN_FNAME_IN) {
+            rc = set_redirection_in(command, token, FILE_IN);
+        }
+
+        // if error return
+        if (rc < 0) return rc;
+    }
+
+    return 0; // return normal
+}
+
+
+/**
+ * Takes a list of tokens and converts tokens to an array which is stored in the command
+ * struct.
+ * 
+ * @param command: structure to hold command representation
+ * @param head: linked list hold tokens of the command
+ */ 
+void set_command_tokens(struct command_t *command, struct list_head *head) {
+
+    // convert list of tokens to array of tokens
+    int size = list_size(head) + 1;
+    char *tokens_arr[size];
+    list_to_arr(head, tokens_arr);
+
+    // creates space in struct to hold array of tokens and copies the array to struct
+    command->tokens = malloc(size * sizeof(char *));
+    for (int i = 0; i < size; ++i) {
+        char *token = tokens_arr[i];
+        command->tokens[i] = token;
+    }
+
+    command->num_tokens = size;
+}
+
+
+/**
+ * Takes a list of tokens which describe a single command and creates a data structure
+ * to represent all the information needed about the command.
+ * 
+ * @param command: structure to hold command representation
+ * @param head: linked list hold tokens of the command
+ * @param pipe_in: does command read in from pipe
+ * @param pipe_out: does command write to pipe
+ * 
+ * @return whether the conversion to command structure of successful or not
+ */ 
+int tokens_to_command(struct command_t *command, struct list_head *head, int pipe_in, int pipe_out) {
+    int rc; 
+
+    // Initialize no file input/output
+    command->file_in = REDIRECT_NONE;
+    command->file_out = REDIRECT_NONE;
+
+    // set command pipe values
+    command->pipe_in = pipe_in;
+    command->pipe_out = pipe_out;
+
+    // set command file params and check return code if command was malformed
+    rc = set_command_redirections(command, head);
+    if (rc < 0) return rc;
+
+    // set command tokens array
+    set_command_tokens(command, head);
+
+    return 0;
+}
+
+
+/**
+ * Once the list of tokens is created, this function checks if any redirection is present. If found,
+ * the function determines if a filename was provided and what kind of operation should be done on
+ * the file (overwrite, append, read). The operation type is stored in the corresponding file token
+ * and the redirection token is deleted from the list since it is no longer needed.
+ * 
+ * @param head: head of the linked list of tokens
+ * 
+ * @return status which descibes if all redirection was valid
+ */ 
+int subcommand_postprocessor(struct list_head *head) {
+    struct list_head *curr;
+
+    //Loop through all of the tokens to remove redirection tokens
+    for (curr = head->next; curr != head; curr = curr->next) {
+        char *tokstr = list_entry(curr, struct token_t, list)->token_text;
+
+        // if token text is redirection symbol
+        if (strcmp(tokstr, ">") == 0 || strcmp(tokstr, ">>") == 0 || strcmp(tokstr, "<") == 0) {
+            // redirection should not be last node is list
+            if (curr->next == head) {
+                LOG_ERROR(ERROR_INVALID_CMDLINE);
+                return -1;
+            } else {
+                // get token after redirection
+                struct token_t *fname_tok = list_entry(curr->next, struct token_t, list);
+
+                // overwrite to file
+                if (strcmp(tokstr, ">") == 0)
+                    fname_tok->token_type = TOKEN_FNAME_OUT_OVERWRITE;
+
+                // append to file
+                else if (strcmp(tokstr, ">>") == 0)
+                    fname_tok->token_type = TOKEN_FNAME_OUT_APPEND;
+
+                // read from file
+                else if (strcmp(tokstr, "<") == 0)
+                    fname_tok->token_type = TOKEN_FNAME_IN;
+
+                // move loop to next node and delete the redirection node
+                curr = curr->next;
+                list_del(curr->prev);
+            }
+        }
+    }
+
+    return 0;
+}
+
+
 /**
  * Uses the statemachine pattern to iteratively move through the command line that
  * that given by the user. Based on the character value, the state of the machine is 
@@ -205,7 +492,7 @@ void do_quote(struct state_machine_t *sm, char c, struct list_head *list_tokens,
  * @param list_tokens: linked list to hold the subcommand being parsed
  * @param cmdline: the command that was entered by user
 **/
-void subcommand_parser(struct list_head *list_tokens, char *cmdline) {
+void subcommand_processor(struct list_head *list_tokens, char *cmdline) {
     // initialize statemachine
     struct state_machine_t *sm = malloc(sizeof(struct state_machine_t));
     initialize_machine(sm, cmdline);
@@ -242,164 +529,6 @@ void subcommand_parser(struct list_head *list_tokens, char *cmdline) {
 
 }
 
-/**
- * Counts the number of subcommands present in a given command line. Each time
- * a pipe is encountered we incremenet the counter and return the final value.
- * 
- * @param cmdline: the command that was entered by user
- * @param cmd_len: length of command
- * @return: interger value of the number of subcommands found
- */ 
-int get_num_subcommands(char *cmdline, int cmd_len) {
-    int count = 1;
-    for (int i=0; i<cmd_len; i++) {
-        if (cmdline[i] == '|') {
-            count++;
-        }
-    }
-    return count;
-}
-
-/**
- * Splits the command line input into subcommands each divided by a pipe.
- * 
- * @param cmdline: the command that was entered by user
- * @param subcommands_arr: array to hold subcommand strings
- * @param cmd_len: length of command
- */ 
-void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
-    int idx = 0;   // index of subcommand array 
-    int start = 0, len = 0; // subcommand start index and length
-
-    for (int i=0; i<cmd_len; i++) {
-        // reached pipe or the end of the cmdline input
-        if (cmdline[i] == '|' || cmdline[i] == '\n') {
-            // copy subcommand to array
-            subcommands_arr[idx++] = strdup(sub_string(cmdline, start, len)); 
-
-            // next subcommand begins at next position (after the pipe) 
-            start = i+1;
-            len = 0;
-        } else {
-            len++; // still in subcommand, increment subcommand length
-        }
-    }
-}
-
-/**
- * Checks if the token type is normal or redirection
- * @param token: the token to check the type of
- */
-int is_token_type_redirect(struct token_t token) {
-    return token.token_type == TOKEN_FNAME_IN || token.token_type == TOKEN_FNAME_OUT_APPEND || token.token_type == TOKEN_FNAME_OUT_OVERWRITE;
-}
-
-/**
- * Takes a list of tokens which describe a single command and creates a data structure
- * to represent all the information needed about the command.
- * 
- * 
- * @param command: structure to hold command representation
- * @param list_tokens: linked list hold tokens of the command
- */ 
-int tokens_to_command(struct command_t *command, struct list_head *list_tokens, int pipe_in, int pipe_out) {
-    
-    //Setup command
-    command->file_in = REDIRECT_NONE;
-    command->file_out = REDIRECT_NONE;
-    command->pipe_in = pipe_in;
-    command->pipe_out = pipe_out;
-
-    struct list_head *current_token = list_tokens->next;
-    do {
-        struct token_t *tok = list_entry(current_token, struct token_t, list);
-        
-        switch (tok->token_type) {
-            case TOKEN_FNAME_OUT_OVERWRITE:
-                command->outfile = strdup(tok->token_text);
-                command->file_out = FILE_OUT_OVERWRITE;
-                if (command->file_out != 0) {
-                    LOG_ERROR(ERROR_INVALID_CMDLINE);
-                }
-
-                break;
-            case TOKEN_FNAME_OUT_APPEND:
-                if (command->file_out != 0) {
-                    LOG_ERROR(ERROR_INVALID_CMDLINE);
-                }
-                
-                command->outfile = strdup(tok->token_text);
-                command->file_out = FILE_OUT_APPEND;
-                break;
-            case TOKEN_FNAME_IN:
-                if (command->file_out != 0) {
-                    LOG_ERROR(ERROR_INVALID_CMDLINE);
-                }
-
-                command->infile = strdup(tok->token_text);
-                command->file_in = FILE_IN;
-                break;
-        }
-
-        current_token = current_token->next;
-        //Remove from list if redirect token
-        if (is_token_type_redirect(*tok)) {
-            list_del(current_token->prev);
-        }
-    } while (current_token != list_tokens);
-    
-    // list of tokens to array of tokens
-    int size = list_size(list_tokens) + 1;
-    char *tokens_arr[size];
-    list_to_arr(list_tokens, tokens_arr);
-
-    // Populate command struct
-    command->num_tokens = size;
-
-    // creates space in struct to hold array of tokens and copies the array to struct
-    command->tokens = malloc(size * sizeof(char *));
-    for (int i = 0; i < size; ++i) {
-        char *token = tokens_arr[i];
-        command->tokens[i] = token;
-    }
-}
-
-void print_command_struct(struct command_t *command) {
-    printf("*********************************\n");
-
-    // ->num_tokens
-    printf("    num_tokens -> %d\n", command->num_tokens);
-    
-    // ->tokens
-    printf("    tokens -> ");
-    for (int i = 0; i < command->num_tokens; i++) {
-        printf("[%s] ", command->tokens[i]);
-    }
-    printf("\n");
-
-    // ->file_in
-    printf("    file_in -> %d\n", command->file_in);
-    if (command->file_in) {
-        printf("    infile -> %s\n", command->infile);
-    }
-
-    // ->file_out
-    printf("    file_out -> %d\n", command->file_out);
-    if (command->file_in) {
-        printf("    outfile -> %s\n", command->outfile);
-    }
-
-    // ->pipe_in and pipe_out
-    printf("    pipe_in -> %d\n", command->pipe_in);
-    printf("    pipe_out -> %d\n", command->pipe_out);
-
-    printf("*********************************\n");
-}
-
-void print_command_list(struct command_t *commands[], int num_cmds) {
-    for (int i=0; i<num_cmds; i++) 
-        print_command_struct(commands[i]);
-}
 
 /**
  * Driver function for the command parser functionality. This function initializes
@@ -408,68 +537,48 @@ void print_command_list(struct command_t *commands[], int num_cmds) {
  * 
  * @param cmdline: the command line given by the user that will be parsed
  * @param cmd_len: length of command
+ * 
+ * @return status of command parsing
  **/ 
 int handle_command(char *cmdline, int cmd_len) {
-    if (cmdline == NULL) return -1;
-    if (cmd_len <= 0) return -1;
+
+    int rc; // catch return codes
 
     // split command line into array of subcommands
     int sub_count = get_num_subcommands(cmdline, cmd_len);
-
     char *subcommands_arr[sub_count]; 
     split_cmdline(subcommands_arr, cmdline, cmd_len);
 
     // Create struct array to hold all command structures
     struct command_t *commands_arr[sub_count];
 
+
     // parse each subcommands
     for (int i = 0; i < sub_count; i++) {
-        // Initialize token list
+
+        // Initialize token list for sub command
         LIST_HEAD(list_tokens);
 
         // parse tokens from subcommand and store in list
-        subcommand_parser(&list_tokens, subcommands_arr[i]);
+        subcommand_processor(&list_tokens, subcommands_arr[i]);
 
-        //Loop through all of the tokens to remove redirection tokens
-        struct list_head *current_token = list_tokens.next;
-        do {
-            char *tokstr = list_entry(current_token, struct token_t, list)->token_text;
-
-            if (strcmp(tokstr, ">") == 0 || strcmp(tokstr, ">>") == 0 || strcmp(tokstr, "<") == 0) {
-                if (current_token->next == &list_tokens) {
-                    LOG_ERROR(ERROR_INVALID_CMDLINE);
-                } else {
-                    struct token_t *tok = list_entry(current_token->next, struct token_t, list);
-
-                    if (strcmp(tokstr, ">") == 0)
-                        tok->token_type = TOKEN_FNAME_OUT_OVERWRITE;
-                    else if (strcmp(tokstr, ">>") == 0)
-                        tok->token_type = TOKEN_FNAME_OUT_APPEND;
-                    else if (strcmp(tokstr, "<") == 0)
-                        tok->token_type = TOKEN_FNAME_IN;
-
-                    current_token = current_token->next;
-                    list_del(current_token->prev);
-                }
-            }
-            
-            //Increment to next token
-            current_token = current_token->next;
-        } while (current_token != &list_tokens);
+        // verifies token arrangement is valid
+        rc = subcommand_postprocessor(&list_tokens);
+        if (rc < 0) return rc;
 
         // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
-        int result = tokens_to_command(command, &list_tokens, i != 0, i != sub_count - 1);
 
-        //Check if result is negative
-        if (result < 0)
-            return result;
+        int pipe_in = (i != 0);               // if command is not first, pipe in
+        int pipe_out = (i != sub_count - 1);  // if command is not last, pipe out
 
-        // add subcommand to list of commands
+        rc = tokens_to_command(command, &list_tokens, pipe_in, pipe_out);
+        if (rc < 0) return rc;
+
+        // add command structure to list of commands
         commands_arr[i] = command;
     }
 
-    
     print_command_list(commands_arr, sub_count);
 
     return 0;
