@@ -12,7 +12,7 @@ parser: parser.o
 	gcc -o parser list.c $< $(LDFLAGS) 
 
 sushell: sushell.o
-	gcc -o sushell parser.c list.c $< $(LDFLAGS) 
+	gcc -o sushell runner.c parser.c list.c $< $(LDFLAGS) 
 
 run: sushell
 	./sushell

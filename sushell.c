@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
             if (strcmp(cmdline, "exit\n") == 0) {
                 return 0;
             }
-            int rc = handle_command(cmdline, strlen(cmdline));   
+            int rc = do_command(cmdline);   
         }
     }
     

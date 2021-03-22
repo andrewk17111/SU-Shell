@@ -137,32 +137,17 @@ void list_to_arr(struct list_head *head, char **arr) {
 }
 
 /**
- * Displays the content value of each element in the list provided, if the list is not empty
+ * Free all allocated memory to hold list content
  * 
- * @head: the head node of a given linked list
- **/
-void print_subcommand(struct list_head *head) {
-    if (!list_empty(head)) {
-        struct token_t *token; 
-        struct list_head *curr; 
+ * @list: head node of list to free
+ **/ 
+void clear_list(struct list_head *list) {
+    struct token_t *token; // the wrapping structure of each node in the list
 
-        // traverse subcommand tokens
-        for (curr = head->next; curr != head; curr = curr->next) {
-            // extract token
-            token = list_entry(curr, struct token_t, list);
-            char *token_type;
-
-            if (token->token_type == TOKEN_NORMAL) {
-                token_type = "TOKEN_NORMAL";
-            }
-            if (token->token_type == TOKEN_REDIR) {
-                token_type = "TOKEN_REDIR";
-            }
-            /*if (token->token_type == TOKEN_FNAME) {
-                token_type = "TOKEN_REDIR";
-            }*/
-            printf("(%s [type: %s]) -> ", token->token_text, token_type);
-        }
-        printf("NULL\n");
+    // traverse until no nodes remain in list
+    while (!list_empty(list)) {
+        token = list_entry(list->next, struct token_t, list);
+        list_del(&token->list); // free node
+        free(token);            // free entire token struct allocation
     }
 }

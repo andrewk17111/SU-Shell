@@ -20,40 +20,6 @@
 #include "error.h"
 
 
-void print_command_struct(struct command_t *command) {
-    printf("*********************************\n");
-
-    // ->num_tokens
-    printf("    num_tokens -> %d\n", command->num_tokens);
-    
-    // ->tokens
-    printf("    tokens -> ");
-    for (int i = 0; i < command->num_tokens; i++) {
-        printf("[%s] ", command->tokens[i]);
-    }
-    printf("\n");
-
-    // ->file_in
-    printf("    file_in -> %d\n", command->file_in);
-    printf("    infile -> %s\n", command->infile);
-
-    // ->file_out
-    printf("    file_out -> %d\n", command->file_out);
-    printf("    outfile -> %s\n", command->outfile);
-
-    // ->pipe_in and pipe_out
-    printf("    pipe_in -> %d\n", command->pipe_in);
-    printf("    pipe_out -> %d\n", command->pipe_out);
-
-    printf("*********************************\n");
-}
-
-void print_command_list(struct command_t *commands[], int num_cmds) {
-    for (int i=0; i<num_cmds; i++) 
-        print_command_struct(commands[i]);
-}
-
-
 /**
  * Definition of all possible states the state machine can be in
  * 
@@ -94,24 +60,7 @@ struct state_machine_t {
 };
 
 
-/**
- * Counts the number of subcommands present in a given command line. Each time
- * a pipe is encountered we incremenet the counter and return the final value.
- * 
- * @param cmdline: the command that was entered by user
- * @param cmd_len: length of command
- * 
- * @return: interger value of the number of subcommands found
- */ 
-int get_num_subcommands(char *cmdline, int cmd_len) {
-    int count = 1;
-    for (int i=0; i<cmd_len; i++) {
-        if (cmdline[i] == '|') {
-            count++;
-        }
-    }
-    return count;
-}
+
 
 
 /**
@@ -139,10 +88,11 @@ char * sub_string(char* str, int start, int length) {
  * @param subcommands_arr: array to hold subcommand strings
  * @param cmd_len: length of command
  */ 
-void split_cmdline(char *subcommands_arr[], char *cmdline, int cmd_len) {
+void split_cmdline(char *subcommands_arr[], char *cmdline) {
     int idx = 0;   // index of subcommand array 
     int start = 0, len = 0; // subcommand start index and length
 
+    int cmd_len = strlen(cmdline);
     for (int i=0; i<cmd_len; i++) {
         // reached pipe or the end of the cmdline input
         if (cmdline[i] == '|' || cmdline[i] == '\n') {
@@ -531,30 +481,27 @@ void subcommand_processor(struct list_head *list_tokens, char *cmdline) {
 
 
 /**
- * Driver function for the command parser functionality. This function initializes
- * an empty linked list that will hold the parsed arguments. Then it simply 
- * passes the linked list and the command line to the parsing function.
+ * Driver function for the command parser functionality. Takes a single commmand line
+ * input, breaks it into an array of subcommands and parses each. Each subcommand is tokenized
+ * and converted a command structure and added to the array of commands. 
  * 
+ * When parser finishes, a complete array of commands is populated and ready to be executed by the shell.
+ * 
+ * @param commands_arr: array to hold command stucts
+ * @param num_commands: number of subcommands to parse
  * @param cmdline: the command line given by the user that will be parsed
- * @param cmd_len: length of command
  * 
  * @return status of command parsing
  **/ 
-int handle_command(char *cmdline, int cmd_len) {
+int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline) {
 
     int rc; // catch return codes
 
-    // split command line into array of subcommands
-    int sub_count = get_num_subcommands(cmdline, cmd_len);
-    char *subcommands_arr[sub_count]; 
-    split_cmdline(subcommands_arr, cmdline, cmd_len);
-
-    // Create struct array to hold all command structures
-    struct command_t *commands_arr[sub_count];
-
+    char *subcommands_arr[num_commands]; 
+    split_cmdline(subcommands_arr, cmdline);
 
     // parse each subcommands
-    for (int i = 0; i < sub_count; i++) {
+    for (int i = 0; i < num_commands; i++) {
 
         // Initialize token list for sub command
         LIST_HEAD(list_tokens);
@@ -569,17 +516,17 @@ int handle_command(char *cmdline, int cmd_len) {
         // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
 
-        int pipe_in = (i != 0);               // if command is not first, pipe in
-        int pipe_out = (i != sub_count - 1);  // if command is not last, pipe out
-
+        int pipe_in = (i != 0);                  // if command is not first, pipe in
+        int pipe_out = (i != num_commands - 1);  // if command is not last, pipe out
         rc = tokens_to_command(command, &list_tokens, pipe_in, pipe_out);
         if (rc < 0) return rc;
 
         // add command structure to list of commands
         commands_arr[i] = command;
-    }
 
-    print_command_list(commands_arr, sub_count);
+        // free list of tokens
+        clear_list(&list_tokens);
+    }
 
     return 0;
 }
