@@ -148,7 +148,7 @@ void add_token_node(struct state_machine_t *sm, struct list_head *head, char *te
     token->token_type = TOKEN_NORMAL;
 
     list_add_tail(&token->list, head);
-
+    free(text);
 }
 
 
@@ -396,10 +396,12 @@ int tokens_to_command(struct command_t *command, struct list_head *head, int pip
  */ 
 int subcommand_postprocessor(struct list_head *head) {
     struct list_head *curr;
+    struct token_t *token;
 
     //Loop through all of the tokens to remove redirection tokens
     for (curr = head->next; curr != head; curr = curr->next) {
-        char *tokstr = list_entry(curr, struct token_t, list)->token_text;
+        token = list_entry(curr, struct token_t, list);
+        char *tokstr = token->token_text;
 
         // if token text is redirection symbol
         if (strcmp(tokstr, ">") == 0 || strcmp(tokstr, ">>") == 0 || strcmp(tokstr, "<") == 0) {
@@ -424,8 +426,10 @@ int subcommand_postprocessor(struct list_head *head) {
                     fname_tok->token_type = TOKEN_FNAME_IN;
 
                 // move loop to next node and delete the redirection node
-                curr = curr->next;
-                list_del(curr->prev);
+                struct list_head *next = curr->next;
+                list_del(curr);
+                free(token);
+                curr = next;
             }
         }
     }
@@ -535,6 +539,7 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
         if (rc < 0) return rc;
 
         // add command structure to list of commands
+        commands_arr[i] = malloc(sizeof(struct command_t *));
         commands_arr[i] = command;
 
         // free list memory
@@ -542,7 +547,7 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
     }
 
 
-    // free_subcommands(subcommands_arr, num_commands);
+    free_subcommands(subcommands_arr, num_commands);
 
     return 0;
 }

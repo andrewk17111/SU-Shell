@@ -64,9 +64,9 @@ int get_num_subcommands(char *cmdline) {
 
 void clean_up(struct command_t *commands_arr[], int num_commands) {
     for (int i=0; i<num_commands; i++) {
-        
-        int num_tokens = commands_arr[i]->num_tokens;
-        for (int j=0; j<num_tokens; j++) {
+
+        int num_toks = commands_arr[i]->num_tokens;
+        for (int j=0;j<num_toks; j++ ) {
             free(commands_arr[i]->tokens[j]);
         }
         free(commands_arr[i]->tokens);
@@ -89,14 +89,16 @@ int do_command(char *cmdline) {
     int num_commands = get_num_subcommands(cmdline);
 
     // Create struct array to hold all command structures
-    struct command_t *commands_arr[num_commands];
+    struct command_t **commands_arr = malloc(sizeof(struct command_t *) * num_commands);
 
     rc = parse_command(commands_arr, num_commands, cmdline);
     if (rc < 0) return rc;
 
     print_command_list(commands_arr, num_commands);
 
-    // clean_up(commands_arr, num_commands);
+
+    
+    clean_up(commands_arr, num_commands);
 
     return 0;
 }
