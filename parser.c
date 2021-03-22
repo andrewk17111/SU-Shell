@@ -397,7 +397,6 @@ void set_command_tokens(struct command_t *command, struct list_head *head) {
     }
 
     // command name is first token in array
-    // command->cmd_name = malloc(sizeof(char *) * strlen(command->tokens[0]));
     command->cmd_name = command->tokens[0];
 
     command->num_tokens = size;

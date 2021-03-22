@@ -85,9 +85,6 @@ void clean_up(struct command_t *commands_arr[], int num_commands) {
         free(commands_arr[i]->outfile);
         free(commands_arr[i]->infile);
         
-        // free command name
-        // free(commands_arr[i]->cmd_name);
-        
         // free command struct
         free(commands_arr[i]);
     }
