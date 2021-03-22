@@ -62,6 +62,12 @@ int get_num_subcommands(char *cmdline) {
 }
 
 
+/**
+ * frees all allocated memory to hold command structures.
+ * 
+ * @param commands_arr: array of command structures to free
+ * @param num_commands: number of command structures present
+ */ 
 void clean_up(struct command_t *commands_arr[], int num_commands) {
     for (int i=0; i<num_commands; i++) {
 
@@ -70,10 +76,13 @@ void clean_up(struct command_t *commands_arr[], int num_commands) {
             free(commands_arr[i]->tokens[j]);
         }
         free(commands_arr[i]->tokens);
+        free(commands_arr[i]->outfile);
+        free(commands_arr[i]->infile);
         free(commands_arr[i]);
     }
     free(commands_arr);
 }
+
 
 /**
  * Takes the command line input, parses the command and executes the array of commands
@@ -85,19 +94,23 @@ void clean_up(struct command_t *commands_arr[], int num_commands) {
 int do_command(char *cmdline) {
     int rc;
 
-    // split command line into array of subcommands
+    // count number of commands and allocate memory to hold n command stucts
     int num_commands = get_num_subcommands(cmdline);
-
-    // Create struct array to hold all command structures
     struct command_t **commands_arr = malloc(sizeof(struct command_t *) * num_commands);
 
+    // parse commands to populate array of command structs
     rc = parse_command(commands_arr, num_commands, cmdline);
     if (rc < 0) return rc;
 
-    print_command_list(commands_arr, num_commands);
 
-
+    /** 
+     * TODO: This is where we want to execute the commands 
+     * 
+     */
+    // print_command_list(commands_arr, num_commands);
     
+
+    // release all memory allocated to hold commands
     clean_up(commands_arr, num_commands);
 
     return 0;

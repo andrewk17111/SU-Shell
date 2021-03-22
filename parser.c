@@ -232,6 +232,7 @@ void do_quote(struct state_machine_t *sm, char c, struct list_head *list_tokens,
         // get substring and add argument to list
         char *text = sub_string(cmdline, sm->sub_start, --sm->sub_len);
         add_token_node(sm, list_tokens, text);
+
         // update state
         sm->state = WHITESPACE;
     }
@@ -428,6 +429,7 @@ int subcommand_postprocessor(struct list_head *head) {
                 // move loop to next node and delete the redirection node
                 struct list_head *next = curr->next;
                 list_del(curr);
+                free(token->token_text);
                 free(token);
                 curr = next;
             }
@@ -494,6 +496,8 @@ void free_subcommands(char *subcommands_arr[], int num_commands) {
         free(subcommands_arr[i]);
     }
 
+    free(subcommands_arr);
+
 }
 
 
@@ -514,7 +518,7 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
 
     int rc = 0; // catch return codes
 
-    char *subcommands_arr[num_commands]; 
+    char **subcommands_arr = malloc(sizeof(char *) * num_commands); 
     split_cmdline(subcommands_arr, cmdline);
 
     // parse each subcommands
@@ -539,7 +543,6 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
         if (rc < 0) return rc;
 
         // add command structure to list of commands
-        commands_arr[i] = malloc(sizeof(struct command_t *));
         commands_arr[i] = command;
 
         // free list memory

@@ -77,10 +77,10 @@ struct command_t {
     int pipe_out;
 
     enum redirect_type_e file_in;
-    const char *infile;
+    char *infile;
 
     enum redirect_type_e file_out;
-    const char *outfile;
+    char *outfile;
 };
 
 
