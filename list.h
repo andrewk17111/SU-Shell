@@ -67,7 +67,7 @@ void list_splice(struct list_head *list, struct list_head *head);
 
 void list_print(struct list_head *head);
 
-void list_to_arr(struct list_head *head, char *arr[]);
+void token_list_to_arr(struct list_head *head, char *arr[]);
 
 void clear_list(struct list_head *list);
 

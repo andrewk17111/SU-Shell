@@ -117,12 +117,12 @@ int list_size(struct list_head *head) {
 
 
 /**
- * Converts linked list to array
+ * Converts linked list of tokens to an array of tokens
  * 
  * @head: the head node of a given linked list
  * 
  */ 
-void list_to_arr(struct list_head *head, char **arr) {
+void token_list_to_arr(struct list_head *head, char **arr) {
     if (list_empty(head)) return;
 
     int i = 0;
