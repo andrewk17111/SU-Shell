@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "cmdline.h"
 #include "error.h"
+#include "internal.h"
 
 
 void print_command_struct(struct command_t *command) {
@@ -114,6 +115,16 @@ int do_command(char *cmdline) {
 
     /** 
      * TODO: This is where we want to execute the commands 
+     * 
+     * if ( is_internal_command( cmd ) ) {
+     * 
+     *      execute_interal_command( commands arr )
+     * 
+     * } else {
+     * 
+     *      execute_command( commands arr)
+     * 
+     * }
      * 
      */
     print_command_list(commands_arr, num_commands);
