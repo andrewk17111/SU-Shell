@@ -387,7 +387,7 @@ void set_command_tokens(struct command_t *command, struct list_head *head) {
     // convert list of tokens to array of tokens
     int size = list_size(head) + 1;
     char *tokens_arr[size];
-    list_to_arr(head, tokens_arr);
+    token_list_to_arr(head, tokens_arr);
 
     // creates space in struct to hold array of tokens and copies the array to struct
     command->tokens = malloc(size * sizeof(char *));
