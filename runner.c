@@ -70,7 +70,7 @@ int get_num_subcommands(char *cmdline) {
  * @param commands_arr: array of command structures to free
  * @param num_commands: number of command structures present
  */ 
-void clean_up(struct command_t *commands_arr[], int num_commands) {
+void runner_clean_up(struct command_t *commands_arr[], int num_commands) {
     for (int i=0; i<num_commands; i++) {
 
         // free each token in array
@@ -120,7 +120,7 @@ int do_command(char *cmdline) {
     
 
     // release all memory allocated to hold commands
-    clean_up(commands_arr, num_commands);
+    runner_clean_up(commands_arr, num_commands);
 
     return 0;
 }

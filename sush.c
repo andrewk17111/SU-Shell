@@ -11,21 +11,30 @@
 #include <stdlib.h>
 #include "cmdline.h"
 #include "error.h"
+#include "environ.h"
 
 #define CMD_BUFFER 512 
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[], char *envp[]) {
+    //Environment Setup
+    set_environ(envp);
+
+    //Command Processing
     char cmdline[CMD_BUFFER];
 
-    while(1) {
-        printf("> ");
+    int again = 1;
+    while(again) {
+        printf("%s> ", get_environ_var("PS1")->value);
         if (fgets(cmdline, CMD_BUFFER-1, stdin) != NULL ) {
             if (strcmp(cmdline, "exit\n") == 0) {
-                return 0;
+                again = false;
+            } else {
+                int rc = do_command(cmdline);
             }
-            int rc = do_command(cmdline);   
         }
     }
+
+    //Clear environ
     
     return 0;
 }
