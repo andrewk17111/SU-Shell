@@ -17,20 +17,18 @@
 
 int main(int argc, char *argv[], char *envp[]) {
     //Environment Setup
-    set_environ(envp);
+    environ_init(envp);
 
     //Command Processing
     char cmdline[CMD_BUFFER];
-
-    int again = 1;
-    while(again) {
-        printf("%s> ", get_environ_var("PS1")->value);
+    while(1) {
+        printf(">");
         if (fgets(cmdline, CMD_BUFFER-1, stdin) != NULL ) {
             if (strcmp(cmdline, "exit\n") == 0) {
-                again = false;
-            } else {
-                int rc = do_command(cmdline);
+                return 0;
             }
+            
+            int rc = do_command(cmdline);
         }
     }
 

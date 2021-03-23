@@ -47,7 +47,7 @@ char **make_environ() {
     return envp;
 }
 
-void set_environ(char **envp) {
+void environ_init(char **envp) {
     for (int i = 0; envp[i] != NULL; i++) {
         struct environ_var_t *var = malloc(sizeof(struct environ_var_t));
         char ** environ_var_val = split_environ_var(envp[i]);
@@ -55,10 +55,10 @@ void set_environ(char **envp) {
         var->value = environ_var_val[1];
         list_add_tail(&var->list, &environment);
     }
-    set_environ_var("PS1", "~");
+    environ_set_var("PS1", "~");
 }
 
-bool does_environ_var_exist(char *var_name) {
+bool environ_var_exist(char *var_name) {
     struct list_head *head = &environment;
     struct list_head *curr;
     struct environ_var_t *env_var;
@@ -70,25 +70,31 @@ bool does_environ_var_exist(char *var_name) {
     return false;
 }
 
-void add_environ_var(char *name, char *value) {
+void environ_add_var(char *name, char *value) {
     struct environ_var_t var = { .name = name, .value = value };
     list_add_tail(&var.list, &environment);
 }
 
-void update_environ_var(char *name, char *value) {
-    struct environ_var_t *var = get_environ_var(name);
+void environ_update_var(char *name, char *value) {
+    struct environ_var_t *var = environ_get_var(name);
     var->value = value;
 }
 
-void set_environ_var(char *name, char *value) {
-    if (does_environ_var_exist(name))
-        update_environ_var(name, value);
+void environ_set_var(char *name, char *value) {
+    if (environ_var_exist(name))
+        environ_update_var(name, value);
     else
-        add_environ_var(name, value);
+        environ_add_var(name, value);
 }
 
-struct environ_var_t *get_environ_var(char *name) {
-    if (does_environ_var_exist(name)) {
+void environ_remove_var(char *name) {
+    struct environ_var_t *var = environ_get_var(name);
+    if (var != NULL)
+        list_del(&var->list);
+}
+
+struct environ_var_t *environ_get_var(char *name) {
+    if (environ_var_exist(name)) {
         struct list_head *head = &environment;
         struct list_head *curr;
         struct environ_var_t *env_var;
@@ -99,12 +105,6 @@ struct environ_var_t *get_environ_var(char *name) {
         }
     }
     return NULL;
-}
-
-void remove_environ_var(char *name) {
-    struct environ_var_t *var = get_environ_var(name);
-    if (var != NULL)
-        list_del(&var->list);
 }
 
 //environ_cleaup

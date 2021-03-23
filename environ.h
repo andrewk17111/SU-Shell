@@ -12,10 +12,10 @@ struct environ_var_t {
 };
 
 char **make_environ();
-void set_environ(char **envp);
-bool does_environ_var_exist(char *var_name);
-void set_environ_var(char *name, char *value);
-void remove_environ_var(char *name);
-struct environ_var_t *get_environ_var(char *var_name);
+void environ_init(char **envp);
+bool environ_var_exist(char *var_name);
+void environ_set_var(char *name, char *value);
+void environ_remove_var(char *name);
+struct environ_var_t *environ_get_var(char *var_name);
 
 #endif
