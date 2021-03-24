@@ -112,6 +112,12 @@ int do_command(char *cmdline) {
     rc = parse_command(commands_arr, num_commands, cmdline);
     if (rc < 0) return rc;
 
+    if (is_internal_command(commands_arr[0])) {
+        execute_internal_command(commands_arr[0]);
+    } else {
+        printf("NOT INTERNAL\n");
+    }
+
 
     /** 
      * TODO: This is where we want to execute the commands 
@@ -127,7 +133,7 @@ int do_command(char *cmdline) {
      * }
      * 
      */
-    print_command_list(commands_arr, num_commands);
+    // print_command_list(commands_arr, num_commands);
     
 
     // release all memory allocated to hold commands
