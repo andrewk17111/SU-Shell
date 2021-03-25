@@ -114,23 +114,13 @@ int do_command(char *cmdline) {
     rc = parse_command(commands_arr, num_commands, cmdline);
     if (rc < 0) return rc;
 
-    /** 
-     * TODO: This is where we want to execute the commands 
-     * 
-     * if ( is_internal_command( cmd ) ) {
-     * 
-     *      execute_interal_command( commands arr )
-     * 
-     * } else {
-     * 
-     *      execute_command( commands arr)
-     * 
-     * }
-     * 
-     */
+    if (num_commands == 1 && is_internal_command(commands_arr[0])) {
+        execute_internal_command(commands_arr[0]);
+    } else {
+        execute_external_command(commands_arr, num_commands);
+    }
+    
     // print_command_list(commands_arr, num_commands);
-
-    execute_external_command(commands_arr, num_commands);
     
 
     // release all memory allocated to hold commands
