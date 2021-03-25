@@ -24,10 +24,7 @@ int handle_setenv(struct command_t *cmd) {
 
 int handle_getenv(struct command_t *cmd) {
     if (cmd->num_tokens - 2 == 0) {
-        char **envp = make_environ();
-        for (int i = 0; envp[i] != NULL; i++) {
-            printf("%s\n", envp[i]);
-        }
+        environ_print();
     } else if (cmd->num_tokens - 2 == 1) {
         if (environ_var_exist(cmd->tokens[1])) {
             printf("%s\n", environ_get_var(cmd->tokens[1])->value);
