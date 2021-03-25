@@ -74,6 +74,14 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
         char *executable = commands_arr[0]->cmd_name;
         char **argv = commands_arr[0]->tokens;
 
+        if (executable[0] != '.') {
+            char *path = "/bin/";
+            char *executable_path = calloc(strlen(path)+strlen(executable)+1, sizeof(char));
+            strcpy(executable_path, path);
+            strcat(executable_path, executable);
+            printf("%s\n", executable_path);
+        }
+
         run_cmd(executable, argv, envp);
     }
 
