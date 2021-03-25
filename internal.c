@@ -6,6 +6,7 @@
 #include "error.h"
 #include "environ.h"
 #include <dirent.h>
+#include <stdlib.h>
 
 struct internal_command_t {
     char *name;
@@ -79,6 +80,9 @@ int handle_exit(struct command_t *cmd) {
     if (cmd->num_tokens - 2 != 0) {
         LOG_ERROR(ERROR_EXIT_ARG);
     }
+    
+    environ_clean_up();
+    exit(0);
     return 0;
 }
 
