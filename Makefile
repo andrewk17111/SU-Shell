@@ -12,7 +12,7 @@ parser: parser.o
 	gcc -o parser list.c $< $(LDFLAGS) 
 
 sushell: sush.o
-	gcc -o sush runner.c parser.c list.c environ.c $< $(LDFLAGS) 
+	gcc -o sush runner.c parser.c list.c environ.c internal.c $< $(LDFLAGS) 
 
 run: sush
 	./sush
@@ -21,5 +21,5 @@ valgrind: sush
 	valgrind --leak-check=full ./sushell
 
 clean:
-	rm sush *.o 
+	rm sush *.o
 	rm -fr *.dSYM

@@ -112,7 +112,6 @@ int do_command(char *cmdline) {
     rc = parse_command(commands_arr, num_commands, cmdline);
     if (rc < 0) return rc;
 
-
     /** 
      * TODO: This is where we want to execute the commands 
      * 

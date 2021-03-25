@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include "list.h"
 #include "environ.h"
+#include "internal.h"
+#include "cmdline.h"
 
 LIST_HEAD(environment);
 
@@ -59,11 +61,16 @@ char **make_environ() {
     int i = 0;
     for (curr = head->next; curr != head; curr = curr->next) {
         env_var = list_entry(curr, struct environ_var_t, list);
-        envp[i] = strdup(strcat(strcat(env_var->name, "="), env_var->value));
+        char *string = malloc(strlen(env_var->name) + strlen(env_var->value) + 2);
+        strcpy(string, env_var->name);
+        strcat(string, "=");
+        strcat(string, env_var->value);
+        envp[i] = string;
         i++;
     }
-
+    //printf("%d\n", i);
     envp[i] = NULL;
+    //printf("%d %p\n", i, envp[i]);
 
     return envp;
 }
@@ -92,12 +99,13 @@ void environ_init(char **envp) {
  * @return true if variable exists in the environment; false if it doesn't
  **/
 bool environ_var_exist(char *name) {
+    int x = 0;
     struct list_head *head = &environment;
     struct list_head *curr;
     struct environ_var_t *env_var;
     for (curr = head->next; curr != head; curr = curr->next) {
         env_var = list_entry(curr, struct environ_var_t, list);
-        if (strcmp(env_var->name, name) == 0)
+        if (env_var != NULL && strcmp(env_var->name, name) == 0)
             return true;
     }
     return false;
@@ -110,8 +118,10 @@ bool environ_var_exist(char *name) {
  * @param value - Value of the new environment variable
  **/
 void environ_add_var(char *name, char *value) {
-    struct environ_var_t var = { .name = name, .value = value };
-    list_add_tail(&var.list, &environment);
+    struct environ_var_t *var = malloc(sizeof(struct environ_var_t));//{ .name = name, .value = value };
+    var->name = strdup(name);
+    var->value = strdup(value);
+    list_add_tail(&var->list, &environment);
 }
 
 /**
@@ -122,7 +132,7 @@ void environ_add_var(char *name, char *value) {
  **/
 void environ_update_var(char *name, char *value) {
     struct environ_var_t *var = environ_get_var(name);
-    var->value = value;
+    var->value = strdup(value);
 }
 
 /**
@@ -175,4 +185,10 @@ struct environ_var_t *environ_get_var(char *name) {
     return NULL;
 }
 
+void environ_print() {
+    char **env = make_environ();
+    for (int i = 0; env[i] != NULL; i++) {
+        printf("%s\n", env[i]);
+    }
+}
 //environ_cleaup
