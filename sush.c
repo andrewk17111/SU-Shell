@@ -23,6 +23,7 @@ int main(int argc, char *argv[], char *envp[]) {
     char cmdline[CMD_BUFFER];
     while(1) {
         printf("%s", environ_get_var("PS1")->value);
+        fflush(stdout);
         if (fgets(cmdline, CMD_BUFFER-1, stdin) != NULL ) {
             int rc = do_command(cmdline);
         }
