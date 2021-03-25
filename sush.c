@@ -22,7 +22,7 @@ int main(int argc, char *argv[], char *envp[]) {
     //Command Processing
     char cmdline[CMD_BUFFER];
     while(1) {
-        printf("%s>", environ_get_var("PS1")->value);
+        printf("%s ", environ_get_var("PS1")->value);
         if (fgets(cmdline, CMD_BUFFER-1, stdin) != NULL ) {
             if (strcmp(cmdline, "exit\n") == 0) {
                 return 0;

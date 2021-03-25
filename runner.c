@@ -5,6 +5,8 @@
 #include "cmdline.h"
 #include "error.h"
 #include "internal.h"
+#include "executor.h"
+#include "environ.h"
 
 
 void print_command_struct(struct command_t *command) {
@@ -126,7 +128,9 @@ int do_command(char *cmdline) {
      * }
      * 
      */
-    print_command_list(commands_arr, num_commands);
+    // print_command_list(commands_arr, num_commands);
+
+    execute_external_command(commands_arr, num_commands);
     
 
     // release all memory allocated to hold commands

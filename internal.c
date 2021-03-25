@@ -105,4 +105,5 @@ int execute_internal_command(struct command_t *cmd) {
         if (strcmp(internal_cmds[i].name, cmd->cmd_name) == 0)
             return internal_cmds[i].handler(cmd);
     }
+    return 0;
 }
