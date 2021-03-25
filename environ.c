@@ -83,12 +83,13 @@ char **make_environ() {
 void environ_init(char **envp) {
     for (int i = 0; envp[i] != NULL; i++) {
         struct environ_var_t *var = malloc(sizeof(struct environ_var_t));
-        char ** environ_var_val = split_environ_var(envp[i]);
+        char **environ_var_val = split_environ_var(envp[i]);
         var->name = environ_var_val[0];
         var->value = environ_var_val[1];
         list_add_tail(&var->list, &environment);
+        free(environ_var_val);
     }
-    environ_set_var("PS1", "~");
+    environ_set_var("PS1", ">");
 }
 
 /**
@@ -118,7 +119,7 @@ bool environ_var_exist(char *name) {
  * @param value - Value of the new environment variable
  **/
 void environ_add_var(char *name, char *value) {
-    struct environ_var_t *var = malloc(sizeof(struct environ_var_t));//{ .name = name, .value = value };
+    struct environ_var_t *var = malloc(sizeof(struct environ_var_t));
     var->name = strdup(name);
     var->value = strdup(value);
     list_add_tail(&var->list, &environment);
@@ -132,6 +133,7 @@ void environ_add_var(char *name, char *value) {
  **/
 void environ_update_var(char *name, char *value) {
     struct environ_var_t *var = environ_get_var(name);
+    free(var->value);
     var->value = strdup(value);
 }
 
@@ -156,10 +158,12 @@ void environ_set_var(char *name, char *value) {
  * @param name - Name of the environment variable
  **/
 void environ_remove_var(char *name) {
-    struct environ_var_t *var = environ_get_var(name);
-    if (var != NULL) {
+    if (environ_var_exist(name)) {
+        struct environ_var_t *var = environ_get_var(name);
         list_del(&var->list);
-        free (var);
+        free(var->name);
+        free(var->value);
+        free(var);
     }
 }
 
@@ -185,10 +189,30 @@ struct environ_var_t *environ_get_var(char *name) {
     return NULL;
 }
 
+/**
+ * Prints the current environment variables and their values
+ **/
 void environ_print() {
     char **env = make_environ();
     for (int i = 0; env[i] != NULL; i++) {
         printf("%s\n", env[i]);
+        free(env[i]);
+    }
+    free(env);
+}
+
+/**
+ * Cleans up and frees the variables used by environ.c
+ */
+void environ_clean_up() {
+    struct list_head *head = &environment;
+    struct list_head *curr = head->next;
+    struct environ_var_t *env_var;
+    while (curr != head) {
+        env_var = list_entry(curr, struct environ_var_t, list);
+        curr = curr->next;
+        free(env_var->name);
+        free(env_var->value);
+        free(env_var);
     }
 }
-//environ_cleaup

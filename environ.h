@@ -55,6 +55,13 @@ void environ_remove_var(char *name);
  * @return The environment variable
  **/
 struct environ_var_t *environ_get_var(char *name);
+/**
+ * Prints the current environment variables and their values
+ **/
 void environ_print();
-//environ_cleanup
+
+/**
+ * Cleans up and frees the variables used by environ.c
+ */
+void environ_clean_up();
 #endif
