@@ -81,9 +81,11 @@ struct command_t {
 
     enum redirect_type_e file_in;
     char *infile;
+    int fid_in;
 
     enum redirect_type_e file_out;
     char *outfile;
+    int fid_out;
 };
 
 
