@@ -60,7 +60,7 @@ void handle_cmd_redirection(struct command_t *command) {
  * @param executable: the same of the executable we want to run
  * @param argv: arguments to use with the executable
  **/ 
-int do_child(struct command_t *commands_arr[], int cmd_position,  int pipes_fd[], int num_pipes, char *const envp[]) {
+int do_child(struct command_t *commands_arr[], int cmd_position,  int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
     struct command_t *command = commands_arr[cmd_position];
 
@@ -80,7 +80,7 @@ int do_child(struct command_t *commands_arr[], int cmd_position,  int pipes_fd[]
     else if (command->pipe_in) {
         // you are not the last command -> stdin from pipes
         close(STDIN_FILENO);
-        rc = dup2(pipes_fd[cmd_position], STDIN_FILENO);
+        rc = dup2(pipe_in, STDIN_FILENO);
         if (rc < 0)
             return RETURN_ERROR;
     }
@@ -89,14 +89,20 @@ int do_child(struct command_t *commands_arr[], int cmd_position,  int pipes_fd[]
     else if (command->pipe_out) {
         // you are not the last command -> stdout to pipes
         close(STDOUT_FILENO);
-        rc = dup2(pipes_fd[cmd_position+1], STDOUT_FILENO);
+        rc = dup2(pipe_out, STDOUT_FILENO);
         if (rc < 0)
             return RETURN_ERROR;
     }
 
     // now we can close all pipes since they would have been duped at this point
-    for(int i=0; i<2*num_pipes; i++){
-        close(pipes_fd[i]);
+    if (pipe_in != 0) {
+        dup2(pipe_in, 0);
+        close(pipe_in);
+    }
+
+    if (pipe_out != 1) {
+        dup2(pipe_out, 1);
+        close(pipe_out);
     }
 
     // execute 
@@ -126,17 +132,18 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
     int rc;
     pid_t pid;
     int num_pipes = num_commands - 1;
-    int pipes_fd[ num_pipes * 2 ];
+    int pipes_fd[ 2 ];
 
+    
     // if more than 1 command we need pipes
     if (num_commands != 1) {
-        // create all pipes
-        for (int i=0; i<num_pipes; i+=2) {
-            rc = pipe(pipes_fd + i);
-        }
-
-        for (int i=0; i<num_commands; i++) {
+        int i;
+        int pipe_in = 0;
+        for (i=0; i<num_commands-1; ++i) {
             handle_cmd_redirection(commands_arr[0]);
+
+            rc = pipe(pipes_fd);
+            if (rc < 0) RETURN_ERROR;
 
             pid = fork();
             
@@ -145,11 +152,24 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
                 fprintf(stderr, "Fork Failed");
                 return RETURN_ERROR;
             } else if (pid == 0) {
-                do_child(commands_arr, i, pipes_fd, num_pipes, envp);
-            } else {
-                do_parent(pid);
+                do_child(commands_arr, i, pipe_in, pipes_fd[1], envp);
             }
+
+            // child will write to this side, we can close
+            close(pipes_fd[1]);
+
+            // save the read end of the pipe, this will become the stdin of the next command
+            pipe_in = pipes_fd[0];
+
         }
+
+        // stdout becomes the read end of the last pipe
+        if (pipe_in != 0) {
+            dup2(pipe_in, STDIN_FILENO);
+        }
+
+        int status = execvpe(commands_arr[i]->cmd_name, commands_arr[i]->tokens, envp);
+
     } 
 
 
@@ -167,7 +187,7 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
             fprintf(stderr, "Fork Failed");
             return RETURN_ERROR;
         } else if (pid == 0) {
-            do_child(commands_arr, 0, pipes_fd, num_pipes, envp);
+            do_child(commands_arr, 0, -1, -1, envp);
         } else {
             do_parent(pid);
         }
