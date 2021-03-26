@@ -233,6 +233,38 @@ void do_char(struct state_machine_t *sm, char c, struct list_head *list_tokens, 
         // update state
         sm->state = WHITESPACE;
     } 
+    // handles no space between word and redirection out token
+    else if (c == '>') {
+        // add token that precedes redirection to list (ex. cmd [word]> file ) 
+        char *text = sub_string(cmdline, sm->sub_start, sm->sub_len);
+        add_token_node(sm, list_tokens, text);
+
+        // check if redirection is >> by checking next char in string
+        if (cmdline[sm->position + 1] == '>') {
+            char *redir_tok = sub_string(cmdline, sm->position, 2);
+            add_token_node(sm, list_tokens, redir_tok);
+            sm->position++; // skip a char since we already added it to list
+        } 
+        // just a single redirection > so add it to list
+        else {
+            char *redir_tok = sub_string(cmdline, sm->position, 1);
+            add_token_node(sm, list_tokens, redir_tok);
+        }
+
+        sm->state = WHITESPACE;
+    }
+    // handles no space between word and redirection in token
+    else if (c == '<') {
+        // add token that precedes redirection to list (ex. cmd [word]> file ) 
+        char *text = sub_string(cmdline, sm->sub_start, sm->sub_len);
+        add_token_node(sm, list_tokens, text);
+
+        // just a single redirection < so add it to list
+        char *redir_tok = sub_string(cmdline, sm->position, 1);
+        add_token_node(sm, list_tokens, redir_tok);
+
+        sm->state = WHITESPACE;
+    }
     // still inside a substring, increment substring length
     else {
         sm->sub_len++;
@@ -506,12 +538,10 @@ void tokenizer(struct list_head *list_tokens, char *cmdline) {
     struct state_machine_t *sm = malloc(sizeof(struct state_machine_t));
     initialize_machine(sm, cmdline);
 
-    // initialize statemachine
+    // iterate over cmdline and tokenize
     for (sm->position = 0; sm->position < sm->cmd_len; sm->position++) {
         
-        // get character the statemachine is looking at
         char c = cmdline[sm->position];
-
         switch(sm->state) {
             // character state
             case CHAR:
@@ -556,7 +586,7 @@ void tokenizer(struct list_head *list_tokens, char *cmdline) {
  **/ 
 int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline) {
 
-    int rc = 0; // catch return codes
+    int rc;
 
     char **subcommands_arr = malloc(sizeof(char *) * num_commands); 
     split_cmdline(subcommands_arr, cmdline);
@@ -577,15 +607,9 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
         // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
         rc = tokens_to_command(command, &list_tokens, i, num_commands);
+        if (rc < 0) return RETURN_ERROR;
 
-        // if error building command, return 
-        if (rc < 0) {
-            return RETURN_ERROR;
-        } 
-        // success, add command structure to array of commands
-        else {
-            commands_arr[i] = command;
-        }    
+        commands_arr[i] = command;
 
         // free token list for parsed subcommand
         clear_list(&list_tokens);
