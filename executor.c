@@ -1,3 +1,13 @@
+/**
+ * @file: executor.c
+ * @author: Michael Permyashkin
+ * 
+ * @brief: Executes an array of commands
+ * 
+ * Driver function is called by runner.c which provides an array of non-internal commands
+ * to execute. This execution unit handles all redirection of commands as well as piping
+ * between contiguous commands.
+ */ 
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <stdio.h>
@@ -26,14 +36,17 @@
 int reset_stdin_stdout(int stdin_copy, int stdout_copy) {
     int rc;
 
-    dup2(stdin_copy, STDIN_FILENO);
+    rc = dup2(stdin_copy, STDIN_FILENO);
     if (rc < 0) return RETURN_ERROR;
     
-    dup2(stdout_copy, STDOUT_FILENO);
+    rc = dup2(stdout_copy, STDOUT_FILENO);
     if (rc < 0) return RETURN_ERROR;
     
-    close(stdin_copy);
-    close(stdout_copy);
+    rc = close(stdin_copy);
+    if (rc < 0) return RETURN_ERROR;
+
+    rc = close(stdout_copy);
+    if (rc < 0) return RETURN_ERROR;
 
     return RETURN_SUCCESS;
 }
@@ -214,6 +227,34 @@ int fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *co
 
 
 /**
+ * Each command uses this function to first setup all redirection files, create pipes, forks and
+ * executes the command given.
+ * 
+ * @param command: command struct holding information about commands execution config
+ * @param pipe_in: read side of the pipe used if given command proceeds another
+ * @param pipe_out: write side of the pipe used if given command preceeds another
+ * @param envp: environement for command execution
+ * 
+ * @return status of command execution
+ */ 
+int setup_and_execute_command(struct command_t *command, int pipes_fd[2], int pipe_in, char *const envp[]) {
+    int rc;
+
+    // creates/opens any files to be used for command redirection
+    rc = setup_command_redirection(command);
+    if (rc < 0) return RETURN_ERROR;
+
+    rc = pipe(pipes_fd);
+    if (rc < 0) return RETURN_ERROR;
+
+    rc = fork_and_exec(command, pipe_in, pipes_fd[1], envp);
+    if (rc < 0) return RETURN_ERROR;
+
+    return RETURN_SUCCESS;
+}
+
+
+/**
  * Driver function which executes an array of commands using the information stored in each command stuct to determine
  * the behavior of each commands execution.
  * 
@@ -238,25 +279,20 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
     int pipes_fd[ 2 ];
     int pipe_in = 0;
 
-    
     // fork and execute each command except last (or first if only 1 command is given)
     for (i=0; i<num_commands-1; ++i) {
-        // creates/opens any files to be used for command redirection
-        rc = setup_command_redirection(commands_arr[i]);
-        if (rc < 0) return RETURN_ERROR;
-
-        rc = pipe(pipes_fd);
-        if (rc < 0) return RETURN_ERROR;
-
-        rc = fork_and_exec(commands_arr[i], pipe_in, pipes_fd[1], envp);
+        // use struct to setup execution behavior and execute command
+        rc = setup_and_execute_command(commands_arr[i], pipes_fd, pipe_in, envp);
         if (rc < 0) return RETURN_ERROR;
 
         // close writing end of pipe, the child will write to it's copy
-        close(pipes_fd[1]);
+        rc = close(pipes_fd[1]);
+        if (rc < 0) return RETURN_ERROR;
 
         // becomes the read end of the next command
         pipe_in = pipes_fd[0];
     }
+
 
     // if pipe_in is no longer 0, previous command is piping into the last command to execute
     if (pipe_in != 0) {
@@ -264,13 +300,11 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
         if (rc < 0) return RETURN_ERROR;
     }
 
-    // creates/opens any files to be used for command redirection
-    rc = setup_command_redirection(commands_arr[i]);
+    // setup and execute remaining (or single) command
+    rc = setup_and_execute_command(commands_arr[i], pipes_fd, pipe_in, envp);
     if (rc < 0) return RETURN_ERROR;
 
-    rc = fork_and_exec(commands_arr[i], pipe_in, pipes_fd[1], envp);
-    if (rc < 0) return RETURN_ERROR;
-
+    // reset stdin and stdout to default
     rc = reset_stdin_stdout(stdin_copy, stdout_copy);
     if (rc < 0) return RETURN_ERROR;
 
