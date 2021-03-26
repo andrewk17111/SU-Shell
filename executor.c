@@ -83,8 +83,17 @@ int open_in_file(char *fname) {
 }
 
 
-int handle_cmd_redirection(struct command_t *command) {
+/**
+ * Creates and stores appropriate file id's in the command struct
+ * for any redirection that is defined.
+ * 
+ * @param command: command to check for any redirection
+ * 
+ * @return status of redirection file setup 
+ */ 
+int setup_command_redirection(struct command_t *command) {
     int fid;
+
     // redirection out
     if (command->file_out) {
         fid = create_out_file(command->outfile, command->file_out);
@@ -106,10 +115,16 @@ int handle_cmd_redirection(struct command_t *command) {
 
 
 /**
- * Child process runs the given executable with the provided args
+ * Sets stdin and stdout according to information stored in command struct which 
+ * describes input and output destinations. After setup, the command is executed and
+ * the function will only return if command execution fails.
  * 
- * @param executable: the same of the executable we want to run
- * @param argv: arguments to use with the executable
+ * @param command: command struct holding information about commands execution config
+ * @param pipe_in: read side of the pipe used if given command proceeds another
+ * @param pipe_out: write side of the pipe used if given command preceeds another
+ * @param envp: environement for command execution
+ * 
+ * @return will only return if exec fails
  **/ 
 int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
@@ -118,6 +133,7 @@ int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const e
     if (command->file_out) {
         rc = close(STDOUT_FILENO);
         if (rc < 0) return RETURN_ERROR;
+        
         rc = dup(command->fid_out);
         if (rc < 0) return RETURN_ERROR;
     }
@@ -126,6 +142,7 @@ int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const e
     if (command->file_in) {
         rc = close(STDIN_FILENO);
         if (rc < 0) return RETURN_ERROR;
+       
         rc = dup(command->fid_in);
         if (rc < 0) return RETURN_ERROR;
     } 
@@ -133,31 +150,20 @@ int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const e
     // if piping in
     if (command->pipe_in) {
         // you are not the last command -> stdin from pipes
-        close(STDIN_FILENO);
+        rc = close(STDIN_FILENO);
+        if (rc < 0) return RETURN_ERROR;
+
         rc = dup2(pipe_in, STDIN_FILENO);
-        close(pipe_in);
         if (rc < 0) return RETURN_ERROR;
     }
 
     // if piping out
     if (command->pipe_out) {
         // you are not the last command -> stdout to pipes
-        close(STDOUT_FILENO);
+        rc = close(STDOUT_FILENO);
+        if (rc < 0) return RETURN_ERROR;
+
         rc = dup2(pipe_out, STDOUT_FILENO);
-        if (rc < 0) return RETURN_ERROR;
-        close(pipe_in);
-    }
-
-    // now we can close all pipes since they would have been duped at this point
-    if (pipe_in != 0) {
-        rc = dup2(pipe_in, 0);
-        close(pipe_in);
-        if (rc < 0) return RETURN_ERROR;
-    }
-
-    if (pipe_out != 1) {
-        rc = dup2(pipe_out, 1);
-        close(pipe_out);
         if (rc < 0) return RETURN_ERROR;
     }
 
@@ -171,7 +177,7 @@ int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const e
 
 
 /**
- * parent process waits for the child to finish
+ * The parent process waits for the child to finish
  * 
  * @param pid: id of the child process
  **/ 
@@ -181,6 +187,16 @@ void do_parent(int pid) {
 }
 
 
+/**
+ * Forks the process and calls functions to handle child and parent processes respectively.
+ * 
+ * @param command: command struct holding information about commands execution config
+ * @param pipe_in: read side of the pipe used if given command proceeds another
+ * @param pipe_out: write side of the pipe used if given command preceeds another
+ * @param envp: environement for command execution
+ * 
+ * @return status of command execution
+ */ 
 int fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     pid_t pid = fork();
     
@@ -197,6 +213,15 @@ int fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *co
 }
 
 
+/**
+ * Driver function which executes an array of commands using the information stored in each command stuct to determine
+ * the behavior of each commands execution.
+ * 
+ * @param commands_arr: array of command structs to execute
+ * @param num_commands: the number of commands to execute
+ * 
+ * @return status of all setup tasks and all commands execution
+ */ 
 int execute_external_command(struct command_t *commands_arr[], int num_commands) {
 
     // store default stdin and stdout to reset after all execution
@@ -205,6 +230,7 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
 
     char **envp = make_environ();
     
+    int i=0; // starting index of command in array of commands
     int rc;
     pid_t pid;
 
@@ -212,11 +238,11 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
     int pipes_fd[ 2 ];
     int pipe_in = 0;
 
-    int i=0;
+    
     // fork and execute each command except last (or first if only 1 command is given)
     for (i=0; i<num_commands-1; ++i) {
         // creates/opens any files to be used for command redirection
-        rc = handle_cmd_redirection(commands_arr[i]);
+        rc = setup_command_redirection(commands_arr[i]);
         if (rc < 0) return RETURN_ERROR;
 
         rc = pipe(pipes_fd);
@@ -225,10 +251,10 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
         rc = fork_and_exec(commands_arr[i], pipe_in, pipes_fd[1], envp);
         if (rc < 0) return RETURN_ERROR;
 
-        // close writing fd on parent
+        // close writing end of pipe, the child will write to it's copy
         close(pipes_fd[1]);
 
-        // this becomes the read end of the next command
+        // becomes the read end of the next command
         pipe_in = pipes_fd[0];
     }
 
@@ -239,7 +265,7 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
     }
 
     // creates/opens any files to be used for command redirection
-    rc = handle_cmd_redirection(commands_arr[i]);
+    rc = setup_command_redirection(commands_arr[i]);
     if (rc < 0) return RETURN_ERROR;
 
     rc = fork_and_exec(commands_arr[i], pipe_in, pipes_fd[1], envp);
