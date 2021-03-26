@@ -60,9 +60,8 @@ void handle_cmd_redirection(struct command_t *command) {
  * @param executable: the same of the executable we want to run
  * @param argv: arguments to use with the executable
  **/ 
-int do_child(struct command_t *commands_arr[], int cmd_position,  int pipe_in, int pipe_out, char *const envp[]) {
+int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
-    struct command_t *command = commands_arr[cmd_position];
 
     // if redirection out
     if (command->file_out) {
@@ -124,9 +123,15 @@ void do_parent(int pid) {
     waitpid(pid, &status, 0);
 }
 
+int fork_and_exec() {
+    
+}
+
 
 
 int execute_external_command(struct command_t *commands_arr[], int num_commands) {
+    int stdin_copy = dup(STDIN_FILENO);
+    int stdout_copy = dup(STDOUT_FILENO);
 
     char **envp = make_environ();
     int rc;
@@ -134,52 +139,17 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
     int num_pipes = num_commands - 1;
     int pipes_fd[ 2 ];
 
+    int i=0;
     
     // if more than 1 command we need pipes
-    if (num_commands != 1) {
-        int i;
-        int pipe_in = 0;
-        for (i=0; i<num_commands-1; ++i) {
-            handle_cmd_redirection(commands_arr[0]);
-
-            rc = pipe(pipes_fd);
-            if (rc < 0) RETURN_ERROR;
-
-            pid = fork();
-            
-            // check fork() return to ensure it is a valid pid, otherwise an error occured
-            if (pid < 0) {
-                fprintf(stderr, "Fork Failed");
-                return RETURN_ERROR;
-            } else if (pid == 0) {
-                do_child(commands_arr, i, pipe_in, pipes_fd[1], envp);
-            }
-
-            // child will write to this side, we can close
-            close(pipes_fd[1]);
-
-            // save the read end of the pipe, this will become the stdin of the next command
-            pipe_in = pipes_fd[0];
-
-        }
-
-        // stdout becomes the read end of the last pipe
-        if (pipe_in != 0) {
-            dup2(pipe_in, STDIN_FILENO);
-        }
-
-        int status = execvpe(commands_arr[i]->cmd_name, commands_arr[i]->tokens, envp);
-
-    } 
-
-
-
-    // only 1 command to execute
-    else {
-
-        // handle redirection for first command
+    int pipe_in = 0;
+    for (i=0; i<num_commands-1; ++i) {
         handle_cmd_redirection(commands_arr[0]);
 
+        rc = pipe(pipes_fd);
+        if (rc < 0) RETURN_ERROR;
+
+        // fork_and_exec(commands_arr[1], pipe_in, pipes_fd[1], envp);
         pid = fork();
         
         // check fork() return to ensure it is a valid pid, otherwise an error occured
@@ -187,12 +157,45 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
             fprintf(stderr, "Fork Failed");
             return RETURN_ERROR;
         } else if (pid == 0) {
-            do_child(commands_arr, 0, -1, -1, envp);
+            do_child(commands_arr[i], pipe_in, pipes_fd[1], envp);
         } else {
             do_parent(pid);
         }
 
+        // child will write to this side, we can close
+        close(pipes_fd[1]);
+
+        // save the read end of the pipe, this will become the stdin of the next command
+        pipe_in = pipes_fd[0];
+
     }
+
+    // stdout becomes the read end of the last pipe
+    if (pipe_in != 0) {
+        dup2(pipe_in, STDIN_FILENO);
+    }
+
+
+    // handle redirection for first command
+    handle_cmd_redirection(commands_arr[i]);
+
+    pid = fork();
+    
+    // check fork() return to ensure it is a valid pid, otherwise an error occured
+    if (pid < 0) {
+        fprintf(stderr, "Fork Failed");
+        return RETURN_ERROR;
+    } else if (pid == 0) {
+        do_child(commands_arr[i], pipe_in, pipes_fd[1], envp);
+    } else {
+        do_parent(pid);
+    }
+
+
+    dup2(stdin_copy, STDIN_FILENO);
+    dup2(stdout_copy, STDOUT_FILENO);
+    close(stdin_copy);
+    close(stdout_copy);
     
 
     return 0;
