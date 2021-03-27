@@ -553,7 +553,7 @@ int is_tokens_redirection_valid(struct list_head *head) {
                 // move loop to next node and delete the redirection node
                 struct list_head *next = curr->next;
                 remove_token_node(curr, token);
-                curr = next;
+                curr = next->prev;
             }
         }
     }
