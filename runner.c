@@ -120,7 +120,7 @@ int do_command(char *cmdline) {
         execute_external_command(commands_arr, num_commands);
     }
     
-    // print_command_list(commands_arr, num_commands);
+    print_command_list(commands_arr, num_commands);
     
 
     // release all memory allocated to hold commands

@@ -16,6 +16,8 @@
 #define CMD_BUFFER 512 
 
 int main(int argc, char *argv[], char *envp[]) {
+    int rc;
+
     //Environment Setup
     environ_init(envp);
 
@@ -25,7 +27,7 @@ int main(int argc, char *argv[], char *envp[]) {
         printf("%s ", environ_get_var("PS1")->value);
         fflush(stdout);
         if (fgets(cmdline, CMD_BUFFER-1, stdin) != NULL ) {
-            int rc = do_command(cmdline);
+            rc = do_command(cmdline);
         }
     }
 

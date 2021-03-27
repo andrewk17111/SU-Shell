@@ -434,6 +434,54 @@ void set_command_tokens(struct command_t *command, struct list_head *head) {
     command->num_tokens = size;
 }
 
+int is_valid_stdin(int pipe_in, enum redirect_type_e redir_type, char *in_fname) {
+    // stdin can only be redirected once
+    if (pipe_in && redir_type == FILE_IN) {
+        return RETURN_ERROR;
+    }
+
+    // if rediction in but no filename, error
+    if (redir_type == FILE_IN && in_fname == NULL) {
+        return RETURN_ERROR;
+    }
+
+    return RETURN_SUCCESS;
+}
+
+int is_valid_stdout(int pipe_out, enum redirect_type_e redir_type, char *out_fname) {
+    // stdout can only be redirected once
+    if (pipe_out && (redir_type == FILE_OUT_OVERWRITE || redir_type == FILE_OUT_APPEND)) {
+        return RETURN_ERROR;
+    }
+
+    // if rediction in but no filename, error
+    if ((redir_type == FILE_OUT_OVERWRITE || redir_type == FILE_OUT_APPEND) && out_fname == NULL) {
+        return RETURN_ERROR;
+    }
+
+    return RETURN_SUCCESS;
+}
+
+int is_valid_command(struct command_t *command) {
+    int rc;
+
+    // check stdin configuration
+    rc = is_valid_stdin(command->pipe_in, command->file_in, command->infile);
+    if (rc < 0) {
+        LOG_ERROR(ERROR_INVALID_CMDLINE);
+        return RETURN_ERROR;
+    }
+
+    // check stdou configuration
+    rc = is_valid_stdout(command->pipe_out, command->file_out, command->outfile);
+    if (rc < 0) {
+        LOG_ERROR(ERROR_INVALID_CMDLINE);
+        return RETURN_ERROR;
+    }
+
+
+    return RETURN_SUCCESS;
+}
 
 /**
  * Takes a list of tokens which describe a single command and creates a data structure
@@ -466,6 +514,10 @@ int tokens_to_command(struct command_t *command, struct list_head *head, int com
     // set command tokens array
     set_command_tokens(command, head);
 
+    // check if command arrangement is valid
+    rc = is_valid_command(command);
+    if (rc < 0) return RETURN_ERROR;
+
     return RETURN_SUCCESS;
 }
 
@@ -488,7 +540,7 @@ int handle_redirection_tokens(struct list_head *head) {
     for (curr = head->next; curr != head; curr = curr->next) {
         token = list_entry(curr, struct token_t, list);
         char *tokstr = token->token_text;
-
+        printf("Checking token: (%s)\n", tokstr);
         // if token text is redirection symbol
         if (strcmp(tokstr, ">") == 0 || strcmp(tokstr, ">>") == 0 || strcmp(tokstr, "<") == 0) {
             // redirection should not be last node is list
@@ -593,7 +645,6 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
 
     // parse each subcommands
     for (int i = 0; i < num_commands; i++) {
-
         // Initialize token list for sub command
         LIST_HEAD(list_tokens);
 
