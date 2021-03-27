@@ -44,9 +44,8 @@ int main(int argc, char *argv[], char *envp[]) {
 
         char cmdline[CMD_BUFFER];
         while (fgets(cmdline, CMD_BUFFER - 1, fp) != NULL) {
-            printf("CHECKPOINT: %s\n", cmdline);
-            char *cmd = strdup(cmdline);
-            do_command(cmd);
+            //printf("STARTUP: %s\n", cmdline);
+            do_command(cmdline);
         }
 
         fclose(fp);

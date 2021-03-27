@@ -126,7 +126,7 @@ void split_cmdline(char *subcommands_arr[], char *cmdline) {
     int cmd_len = strlen(cmdline);
     for (int i=0; i<cmd_len; i++) {
         // reached pipe or the end of the cmdline input
-        if (cmdline[i] == '|' || cmdline[i] == '\n') {
+        if (cmdline[i] == '|' || cmdline[i] == '\n' || cmdline[i] == '\0') {
             // copy subcommand to array
             char *subcommand = sub_string(cmdline, start, len);
             subcommands_arr[idx++] = strdup(subcommand);
