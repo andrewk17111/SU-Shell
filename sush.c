@@ -19,18 +19,6 @@
 
 void run_startup_commands() {
     //Setup filename
-    
-}
-
-int main(int argc, char *argv[], char *envp[]) {
-    int rc;
-
-    //Environment Setup
-    environ_init(envp);
-
-    //Run startup commands
-    //run_startup_commands();
-
     char *sushhome = environ_get_var("SUSHHOME")->value;
     char *filename = malloc(strlen(sushhome) + 9);
     strcpy(filename, sushhome);
@@ -43,13 +31,29 @@ int main(int argc, char *argv[], char *envp[]) {
         FILE *fp = fopen(filename, "r");
 
         char cmdline[CMD_BUFFER];
-        while (fgets(cmdline, CMD_BUFFER - 1, fp) != NULL) {
+        while (fgets(cmdline, CMD_BUFFER - 2, fp)) {
             //printf("STARTUP: %s\n", cmdline);
-            do_command(cmdline);
+            strcat(cmdline, "\n");
+            if (cmdline != NULL && cmdline[0] != '\n' && cmdline[0] != '\0') {
+                int rc = do_command(cmdline);
+                if (rc == 2) {
+                    break;
+                }
+            }
         }
 
         fclose(fp);
     }
+}
+
+int main(int argc, char *argv[], char *envp[]) {
+    int rc;
+
+    //Environment Setup
+    environ_init(envp);
+
+    //Run startup commands
+    run_startup_commands();
 
     //Command Processing
     char cmdline[CMD_BUFFER];
@@ -59,6 +63,9 @@ int main(int argc, char *argv[], char *envp[]) {
         if (fgets(cmdline, CMD_BUFFER-1, stdin) != NULL ) {
             if (cmdline[0] != '\n') {
                 rc = do_command(cmdline);
+                if (rc == 2) {
+                    break;
+                }
             }
         }
     }
