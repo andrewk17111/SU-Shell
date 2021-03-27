@@ -228,7 +228,6 @@ int is_redirection_token(enum token_types_e token_type) {
  */ 
 int set_redirection_out(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
     if (command->file_out != 0) {
-        LOG_ERROR(ERROR_INVALID_CMDLINE);
         return RETURN_ERROR;
     }
 
@@ -251,7 +250,6 @@ int set_redirection_out(struct command_t *command, struct token_t *token, enum r
  */ 
 int set_redirection_in(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
     if (command->file_in != 0) {
-        LOG_ERROR(ERROR_INVALID_CMDLINE);
         return RETURN_ERROR;
     }
 
@@ -401,7 +399,6 @@ int has_valid_redirection(struct list_head *head) {
         if (strcmp(tokstr, ">") == 0 || strcmp(tokstr, ">>") == 0 || strcmp(tokstr, "<") == 0) {
             // redirection should not be last node is list
             if (curr->next == head) {
-                LOG_ERROR(ERROR_INVALID_CMDLINE);
                 return RETURN_ERROR;
             } else {
                 // get token after redirection
@@ -601,6 +598,88 @@ void tokenizer(struct list_head *list_tokens, char *cmdline) {
 
 
 /**
+ * Verifies that stdin of a command is valid. Verifies that a command can either
+ * read from a pipe or read from a file, not both.
+ * 
+ * If stdin is from to a file, the function verifies that a filename is present.
+ * 
+ * @param pipe_out: true/false whether command reads from pipe 
+ * @param redir_type: type of file redirection commmand holds
+ * @param out_fname: name of file for redirection
+ * 
+ * @return integer true or false
+ */ 
+int is_valid_stdin(int pipe_in, enum redirect_type_e redir_type, char *in_fname) {
+    // stdin can only be redirected once
+    if (pipe_in && redir_type == FILE_IN) {
+        return RETURN_ERROR;
+    }
+
+    // if rediction in but no filename, error
+    if (redir_type == FILE_IN && in_fname == NULL) {
+        return RETURN_ERROR;
+    }
+
+    return RETURN_SUCCESS;
+}
+
+
+/**
+ * Verifies that stdout of a command is valid. Verifies that a command can either
+ * write to a pipe or write to a file, not both.
+ * 
+ * If stdout is going to a file, the function verifies that a filename is present.
+ * 
+ * @param pipe_out: true/false whether command writes to pipe 
+ * @param redir_type: type of file redirection commmand holds
+ * @param out_fname: name of file for redirection
+ * 
+ * @return integer true or false
+ */ 
+int is_valid_stdout(int pipe_out, enum redirect_type_e redir_type, char *out_fname) {
+    // stdout can only be redirected once
+    if (pipe_out && (redir_type == FILE_OUT_OVERWRITE || redir_type == FILE_OUT_APPEND)) {
+        return RETURN_ERROR;
+    }
+
+    // if rediction in but no filename, error
+    if ((redir_type == FILE_OUT_OVERWRITE || redir_type == FILE_OUT_APPEND) && out_fname == NULL) {
+        return RETURN_ERROR;
+    }
+
+    return RETURN_SUCCESS;
+}
+
+/**
+ * Verifies that the command struct is valid by verifying that input and output channels 
+ * are only redirected once or not at all. This means that if a command is piping out, it 
+ * cannot also redirect out to a file. If a command is reading from a pipe, it cannot also
+ * redirect a files contents in.
+ * 
+ * @param command: complete command struct to validate
+ * 
+ * @return integer true or false
+ */ 
+int is_valid_command(struct command_t *command) {
+    int rc;
+
+    // check stdin configuration
+    rc = is_valid_stdin(command->pipe_in, command->file_in, command->infile);
+    if (rc < 0) {
+        return RETURN_ERROR;
+    }
+
+    // check stdout configuration
+    rc = is_valid_stdout(command->pipe_out, command->file_out, command->outfile);
+    if (rc < 0) {
+        return RETURN_ERROR;
+    }
+
+    return RETURN_SUCCESS;
+}
+
+
+/**
  * Driver function for the command parser functionality. Takes a single commmand line
  * input, breaks it into an array of subcommands and parses each. Each subcommand is tokenized
  * and converted a command structure and added to the array of commands. 
@@ -628,18 +707,25 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
         // parse tokens from subcommand and store in list
         tokenizer(&list_tokens, subcommands_arr[i]);
 
+
         // verifies token arrangement is valid for any present redirection
         rc = has_valid_redirection(&list_tokens);
         if (rc < 0) return RETURN_ERROR;
+
 
         // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
         rc = tokens_to_command(command, &list_tokens, i, num_commands);
         if (rc < 0) return RETURN_ERROR;
+        
+        // verifies stdout and stdin are valid
+        rc = is_valid_command(command);
+        if (rc < 0) return RETURN_ERROR;
 
+        // command is built and valid, add to array of commands
         commands_arr[i] = command;
 
-        // free token list for parsed subcommand
+        // free token list for parsed subcommand before next iteration
         clear_list(&list_tokens);
     }
 

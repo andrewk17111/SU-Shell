@@ -109,7 +109,10 @@ int do_command(char *cmdline) {
 
     // parse commands to populate array of command structs
     rc = parse_command(commands_arr, num_commands, cmdline);
-    if (rc < 0) return rc;
+    if (rc < 0) {
+        LOG_ERROR(ERROR_INVALID_CMDLINE);
+        return rc;
+    }
 
     // print_commands(commands_arr, num_commands);
 
