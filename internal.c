@@ -7,6 +7,7 @@
 #include "environ.h"
 #include <dirent.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 struct internal_command_t {
     char *name;
@@ -70,15 +71,16 @@ int handle_unsetenv(struct command_t *cmd) {
  */
 int handle_cd(struct command_t *cmd) {
     if (cmd->num_tokens - 2 == 0) {
-        environ_set_var("PWD", "~");
-    } else if (cmd->num_tokens - 2 == 1) {
-        DIR* dir = opendir("mydir");
-        if (dir) {
-            closedir(dir);
-            environ_set_var("PWD", cmd->tokens[1]);
+        if (environ_var_exist("HOME")) {
+            int ec = chdir(environ_get_var("HOME")->value);
+            if (ec != 0) {
+                printf("ERROR: %d\n", ec);
+            }
         } else {
             LOG_ERROR(ERROR_CD_NOHOME);
         }
+    } else if (cmd->num_tokens - 2 == 1) {
+        chdir(cmd->tokens[1]);
     } else {
         LOG_ERROR(ERROR_CD_ARG);
     }
@@ -92,9 +94,9 @@ int handle_cd(struct command_t *cmd) {
  */
 int handle_pwd(struct command_t *cmd) {
     if (cmd->num_tokens - 2 == 0) {
-        if (environ_var_exist("PWD")) {
-            printf("%s\n", environ_get_var("PWD")->value);
-        }
+        char *cwd = malloc(1024);
+        getcwd(cwd, 1024);
+        printf("%s\n", cwd);
     } else {
         LOG_ERROR(ERROR_PWD_ARG);
     }
