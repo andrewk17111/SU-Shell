@@ -109,12 +109,17 @@ int do_command(char *cmdline) {
 
     // parse commands to populate array of command structs
     rc = parse_command(commands_arr, num_commands, cmdline);
-    if (rc < 0) return rc;
+    if (rc < 0) {
+        LOG_ERROR(ERROR_INVALID_CMDLINE);
+        return rc;
+    }
+
+    // print_commands(commands_arr, num_commands);
 
     if (is_internal_command(commands_arr[0])) {
-        execute_internal_command(commands_arr[0]);
+        rc = execute_internal_command(commands_arr[0]);
     } else {
-        execute_external_command(commands_arr, num_commands);
+        rc = execute_external_command(commands_arr, num_commands);
     }
     
     // release all memory allocated to hold commands
