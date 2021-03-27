@@ -46,6 +46,7 @@ int reset_stdin_stdout(int stdin_copy, int stdout_copy) {
     
     rc = close(stdin_copy);
     if (rc < 0) return RETURN_ERROR;
+
     rc = close(stdout_copy);
     if (rc < 0) return RETURN_ERROR;
 
@@ -68,14 +69,28 @@ int create_out_file(char *fname, enum redirect_type_e redir_type) {
     int fid;
 
     // if create/overwrite
-    if (redir_type == FILE_OUT_OVERWRITE)
+    if (redir_type == FILE_OUT_OVERWRITE) {
         fid = open(fname, O_RDWR | O_CREAT | O_TRUNC, 0777);
 
+        // error, unable to open file
+        if (fid < 0) {
+            LOG_ERROR(ERROR_EXEC_OUTFILE, strerror(errno));
+            return RETURN_ERROR;
+        }
+    }
+
     // if append
-    if (redir_type == FILE_OUT_APPEND)
+    else if (redir_type == FILE_OUT_APPEND) {
         fid = open(fname, O_RDWR | O_CREAT | O_APPEND, 0777);
 
-    if (fid < 0) return RETURN_ERROR;
+        // error, unable to open file
+        if (fid < 0) {
+            LOG_ERROR(ERROR_EXEC_APPEND, strerror(errno));
+            return RETURN_ERROR;
+        }
+    }
+
+    // return valid fid
     return fid;
 }
 
@@ -92,7 +107,13 @@ int create_out_file(char *fname, enum redirect_type_e redir_type) {
 int open_in_file(char *fname) {
     int fid = open(fname, O_RDONLY, 0777);
 
-    if (fid < 0) return RETURN_ERROR;
+    // error, unable to open file
+    if (fid < 0) {
+        LOG_ERROR(ERROR_EXEC_INFILE, strerror(errno));
+        return RETURN_ERROR;
+    }
+
+    // return valid fid
     return fid;
 }
 
@@ -111,19 +132,88 @@ int setup_command_redirection(struct command_t *command) {
     // redirection out
     if (command->file_out) {
         fid = create_out_file(command->outfile, command->file_out);
-
         if (fid < 0) return RETURN_ERROR;
+
+        // output file created/opened for write
         command->fid_out = fid; 
     }
 
     // redirection in
     if (command->file_in) {
         fid = open_in_file(command->infile);
-
         if (fid < 0) return RETURN_ERROR;
+
+        // input file opened for read
         command->fid_in = fid;
     }
 
+    return RETURN_SUCCESS;
+}
+
+
+/**
+ * Sets stdin based on command information. Stdin will either be from a file
+ * whose fid is stored in struct, a pipes read side, or the default
+ * 
+ * @param command: command struct holding information about commands execution config
+ * @param pipe_out: write side of the pipe used if given command preceeds another
+ */ 
+int set_stdout(struct command_t *command, int pipe_out) {
+    int rc;
+
+    // writing to file
+    if (command->file_out) {
+        // close stdout
+        rc = close(STDOUT_FILENO);
+        if (rc < 0) return RETURN_ERROR;
+
+        // attach fid to stdout
+        rc = dup(command->fid_out);
+        if (rc < 0) return RETURN_ERROR;
+    } 
+    // writing to pipe
+    else if (command->pipe_out) {
+        // close stdout
+        rc = close(STDOUT_FILENO);
+        if (rc < 0) return RETURN_ERROR;
+
+        // attach pipe to stdout
+        rc = dup2(pipe_out, STDOUT_FILENO);
+        if (rc < 0) return RETURN_ERROR;
+    }
+    // else keep default
+    return RETURN_SUCCESS;
+}
+
+
+/**
+ * Sets stdin based on command information. Stdin will either be from a file
+ * whose fid is stored in struct, a pipes read side, or the default
+ * 
+ * @param command: command struct holding information about commands execution config
+ * @param pipe_in: read side of the pipe used if given command proceeds another
+ */ 
+int set_stdin(struct command_t *command, int pipe_in) {
+    int rc;
+    
+    // reading from file
+    if (command->file_in) {
+        rc = close(STDIN_FILENO);
+        if (rc < 0) return RETURN_ERROR;
+       
+        rc = dup(command->fid_in);
+        if (rc < 0) return RETURN_ERROR;
+    } 
+    // reading from pipe
+    else if (command->pipe_in) {
+        // you are not the last command -> stdin from pipes
+        rc = close(STDIN_FILENO);
+        if (rc < 0) return RETURN_ERROR;
+
+        rc = dup2(pipe_in, STDIN_FILENO);
+        if (rc < 0) return RETURN_ERROR;
+    }
+    // else keep default
     return RETURN_SUCCESS;
 }
 
@@ -143,49 +233,18 @@ int setup_command_redirection(struct command_t *command) {
 int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
 
-    // if redirection out
-    if (command->file_out) {
-        rc = close(STDOUT_FILENO);
-        if (rc < 0) return RETURN_ERROR;
-        
-        rc = dup(command->fid_out);
-        if (rc < 0) return RETURN_ERROR;
-    }
+    rc = set_stdout(command, pipe_out);
+    if (rc < 0) return RETURN_ERROR;
 
-    // if redirection in
-    if (command->file_in) {
-        rc = close(STDIN_FILENO);
-        if (rc < 0) return RETURN_ERROR;
-       
-        rc = dup(command->fid_in);
-        if (rc < 0) return RETURN_ERROR;
-    } 
-
-    // if piping in
-    if (command->pipe_in) {
-        // you are not the last command -> stdin from pipes
-        rc = close(STDIN_FILENO);
-        if (rc < 0) return RETURN_ERROR;
-
-        rc = dup2(pipe_in, STDIN_FILENO);
-        if (rc < 0) return RETURN_ERROR;
-    }
-
-    // if piping out
-    if (command->pipe_out) {
-        // you are not the last command -> stdout to pipes
-        rc = close(STDOUT_FILENO);
-        if (rc < 0) return RETURN_ERROR;
-
-        rc = dup2(pipe_out, STDOUT_FILENO);
-        if (rc < 0) return RETURN_ERROR;
-    }
+    rc = set_stdin(command, pipe_out);
+    if (rc < 0) return RETURN_ERROR;
 
     // execute command
     execvpe(command->cmd_name, command->tokens, envp);
 
     // if exec returns, something went wrong
-    printf("exec returned! errno is [%d]\n",errno);
+    LOG_ERROR(ERROR_EXEC_FAILED, strerror(errno));
+
     return RETURN_ERROR;
 }
 
