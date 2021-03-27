@@ -133,6 +133,29 @@ void initialize_machine(struct state_machine_t *sm, char *cmdline) {
 
 
 /**
+ * Converts linked list of tokens to an array of tokens
+ * 
+ * @head: the head node of a given linked list
+ * 
+ */ 
+void token_list_to_arr(struct list_head *head, char **arr) {
+    if (list_empty(head)) return;
+
+    int i = 0;
+    struct token_t *token; // the wrapping structure of each node in the list
+    struct list_head *curr; // the current node we are at in the traversal
+
+    // list traversal in order and stops when we cycled back to the start (circularly linked list)
+    for (curr = head->next; curr != head; curr = curr->next) {
+        // extract the nodes structure
+        token = list_entry(curr, struct token_t, list);
+        arr[i++] = strdup(token->token_text);
+    }
+    arr[i] = NULL;
+}
+
+
+/**
  * Creates a new token node and adds the node to the tail of the given list
  * 
  * @param sm: state_machine struct
@@ -181,89 +204,15 @@ void free_subcommands(char *subcommands_arr[], int num_commands) {
 
 
 /**
- * Handler when statemachine is in WHITESPACE state. Checks if the current character
- * is a quote or character - sets state accordingly. If it is neither a character or
- * quote, we encountered another whitespace and the handler does nothing.
+ * Checks if token type is associated with redirection. Filenames that proceed a redirection symbol in the 
+ * command have these types which describe how to interact with the file.
  * 
- * @param sm: state_machine struct
- * @param c: character the statemachine is reading
- **/ 
-void do_ws(struct state_machine_t *sm, char c) {
-    // if quote character is a quote
-    if (c == '"') {
-        // sub string will begin at next position (we do not want to include the quotes)
-        sm->sub_start = sm->position + 1;
-        // in WHITESPACE state, so this is the first char in substring
-        sm->sub_len = 1;
-
-        // update state
-        sm->state = QUOTE;
-    } 
-    // character is not space(s) 
-    else if (c != ' ' && c != '\t') {
-        // sub string will begin at current position
-        sm->sub_start = sm->position;
-        // in WHITESPACE state, so this is the first char in substring
-        sm->sub_len = 1;
-        
-        // update state
-        sm->state = CHAR;
-    }
-    // otherwise more whitespace was encountered, do nothing
-}
-
-
-/**
- * Handler when statemachine is in CHAR state. Checks if the current character
- * is blank space(s) - sets state accordingly. If char is neither a space(s) or
- * newline, we encountered another character so we increment the substring length.
+ * @param token_type: type of token
  * 
- * @param sm: state_machine struct
- * @param c: character the statemachine is reading
- * @param list_tokens: linked list to hold the subcommand being parsed
- * @param cmdline: command input from user
- **/ 
-void do_char(struct state_machine_t *sm, char c, struct list_head *list_tokens, char *cmdline) {
-    // is space(s) or newline, we found the end of substring
-    if (c == ' ' || c == '\t' || c == '\0') {
-        // get substring and add argument to list
-        char *text = sub_string(cmdline, sm->sub_start, sm->sub_len);
-        add_token_node(sm, list_tokens, text);
-
-        // update state
-        sm->state = WHITESPACE;
-    } 
-    // still inside a substring, increment substring length
-    else {
-        sm->sub_len++;
-    }
-}
-
-
-/**
- * Handler when statemachine is in QUOTE state. Checks if statemachine reached end
- * of substring or command input. If char is neither a quote or newline, we found 
- * the end of a quoted substring.
- * 
- * @param sm: state_machine struct
- * @param c: character the statemachine is reading
- * @param list_tokens: linked list to hold the subcommand being parsed
- * @param cmdline: command input from user
- **/ 
-void do_quote(struct state_machine_t *sm, char c, struct list_head *list_tokens, char *cmdline) {
-    // if not quote or end of input, increment substring length
-    if (c != '"' && c != '\0') {
-        sm->sub_len++;
-    } 
-    // we reached the end of quoted substring
-    else {
-        // get substring and add argument to list
-        char *text = sub_string(cmdline, sm->sub_start, --sm->sub_len);
-        add_token_node(sm, list_tokens, text);
-
-        // update state
-        sm->state = WHITESPACE;
-    }
+ * @return integer true or false
+ */ 
+int is_redirection_token(enum token_types_e token_type) {
+    return (token_type == TOKEN_FNAME_OUT_OVERWRITE || token_type == TOKEN_FNAME_OUT_APPEND || token_type == TOKEN_FNAME_IN);
 }
 
 
@@ -312,17 +261,6 @@ int set_redirection_in(struct command_t *command, struct token_t *token, enum re
     return RETURN_SUCCESS;
 }
 
-/**
- * Checks if token type is associated with redirection. Filenames that proceed a redirection symbol in the 
- * command have these types which describe how to interact with the file.
- * 
- * @param token_type: type of token
- * 
- * @return integer true or false
- */ 
-int is_redirection_token(enum token_types_e token_type) {
-    return (token_type == TOKEN_FNAME_OUT_OVERWRITE || token_type == TOKEN_FNAME_OUT_APPEND || token_type == TOKEN_FNAME_IN);
-}
 
 /**
  * Iterates over all tokens to determine if redirection is present. If redirection is
@@ -351,12 +289,12 @@ int set_command_redirections(struct command_t *command, struct list_head *head) 
             }
 
             // >>
-            if (token_type == TOKEN_FNAME_OUT_APPEND) {
+            else if (token_type == TOKEN_FNAME_OUT_APPEND) {
                 rc = set_redirection_out(command, token, FILE_OUT_APPEND);
             }
             
             // <
-            if (token_type == TOKEN_FNAME_IN) {
+            else if (token_type == TOKEN_FNAME_IN) {
                 rc = set_redirection_in(command, token, FILE_IN);
             }
 
@@ -366,7 +304,7 @@ int set_command_redirections(struct command_t *command, struct list_head *head) 
             // move loop to next node and delete the filename node
             struct list_head *next = curr->next;
             remove_token_node(curr, token);
-            curr = next;
+            curr = next->prev;
         }
         
     }
@@ -419,7 +357,9 @@ int tokens_to_command(struct command_t *command, struct list_head *head, int com
 
     // Initialize no file input/output
     command->file_in = REDIRECT_NONE;
+    command->infile = NULL;
     command->file_out = REDIRECT_NONE;
+    command->outfile = NULL;
 
     // set command pipe values
     int pipe_in = (command_position != 0) ? TRUE : FALSE;                  // if command is not first, pipe in
@@ -488,6 +428,125 @@ int has_valid_redirection(struct list_head *head) {
     }
 
     return RETURN_SUCCESS;
+}
+
+
+/**
+ * Handler when statemachine is in WHITESPACE state. Checks if the current character
+ * is a quote or character - sets state accordingly. If it is neither a character or
+ * quote, we encountered another whitespace and the handler does nothing.
+ * 
+ * @param sm: state_machine struct
+ * @param c: character the statemachine is reading
+ **/ 
+void do_ws(struct state_machine_t *sm, char c) {
+    // if quote character is a quote
+    if (c == '"') {
+        // sub string will begin at next position (we do not want to include the quotes)
+        sm->sub_start = sm->position + 1;
+        // in WHITESPACE state, so this is the first char in substring
+        sm->sub_len = 1;
+
+        // update state
+        sm->state = QUOTE;
+    } 
+    // character is not space(s) 
+    else if (c != ' ' && c != '\t') {
+        // sub string will begin at current position
+        sm->sub_start = sm->position;
+        // in WHITESPACE state, so this is the first char in substring
+        sm->sub_len = 1;
+        
+        // update state
+        sm->state = CHAR;
+    }
+    // otherwise more whitespace was encountered, do nothing
+}
+
+
+/**
+ * Handler when statemachine is in CHAR state. Checks if the current character
+ * is blank space(s) - sets state accordingly. If char is neither a space(s) or
+ * newline, we encountered another character so we increment the substring length.
+ * 
+ * @param sm: state_machine struct
+ * @param c: character the statemachine is reading
+ * @param list_tokens: linked list to hold the subcommand being parsed
+ * @param cmdline: command input from user
+ **/ 
+void do_char(struct state_machine_t *sm, char c, struct list_head *list_tokens, char *cmdline) {
+    // is space(s) or newline, we found the end of substring
+    if (c == ' ' || c == '\t' || c == '\0') {
+        // get substring and add argument to list
+        char *text = sub_string(cmdline, sm->sub_start, sm->sub_len);
+        add_token_node(sm, list_tokens, text);
+
+        // update state
+        sm->state = WHITESPACE;
+    } 
+        // handles no space between word and redirection out token
+    else if (c == '>') {
+        // add token that precedes redirection to list (ex. cmd [word]> file ) 
+        char *text = sub_string(cmdline, sm->sub_start, sm->sub_len);
+        add_token_node(sm, list_tokens, text);
+
+        // check if redirection is >> by checking next char in string
+        if (cmdline[sm->position + 1] == '>') {
+            char *redir_tok = sub_string(cmdline, sm->position, 2);
+            add_token_node(sm, list_tokens, redir_tok);
+            sm->position++; // skip a char since we already added it to list
+        } 
+        // just a single redirection > so add it to list
+        else {
+            char *redir_tok = sub_string(cmdline, sm->position, 1);
+            add_token_node(sm, list_tokens, redir_tok);
+        }
+
+        sm->state = WHITESPACE;
+    }
+    // handles no space between word and redirection in token
+    else if (c == '<') {
+        // add token that precedes redirection to list (ex. cmd [word]> file ) 
+        char *text = sub_string(cmdline, sm->sub_start, sm->sub_len);
+        add_token_node(sm, list_tokens, text);
+
+        // just a single redirection < so add it to list
+        char *redir_tok = sub_string(cmdline, sm->position, 1);
+        add_token_node(sm, list_tokens, redir_tok);
+
+        sm->state = WHITESPACE;
+    }
+    // still inside a substring, increment substring length
+    else {
+        sm->sub_len++;
+    }
+}
+
+
+/**
+ * Handler when statemachine is in QUOTE state. Checks if statemachine reached end
+ * of substring or command input. If char is neither a quote or newline, we found 
+ * the end of a quoted substring.
+ * 
+ * @param sm: state_machine struct
+ * @param c: character the statemachine is reading
+ * @param list_tokens: linked list to hold the subcommand being parsed
+ * @param cmdline: command input from user
+ **/ 
+void do_quote(struct state_machine_t *sm, char c, struct list_head *list_tokens, char *cmdline) {
+    // if not quote or end of input, increment substring length
+    if (c != '"' && c != '\0') {
+        sm->sub_len++;
+    } 
+    // we reached the end of quoted substring
+    else {
+        // get substring and add argument to list
+        char *text = sub_string(cmdline, sm->sub_start, --sm->sub_len);
+        add_token_node(sm, list_tokens, text);
+
+        // update state
+        sm->state = WHITESPACE;
+    }
 }
 
 

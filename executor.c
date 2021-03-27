@@ -35,16 +35,17 @@
  */ 
 int reset_stdin_stdout(int stdin_copy, int stdout_copy) {
     int rc;
-
+    
+    // reset stdin
     rc = dup2(stdin_copy, STDIN_FILENO);
     if (rc < 0) return RETURN_ERROR;
     
+    // reset stdout
     rc = dup2(stdout_copy, STDOUT_FILENO);
     if (rc < 0) return RETURN_ERROR;
     
     rc = close(stdin_copy);
     if (rc < 0) return RETURN_ERROR;
-
     rc = close(stdout_copy);
     if (rc < 0) return RETURN_ERROR;
 

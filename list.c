@@ -117,29 +117,6 @@ int list_size(struct list_head *head) {
 
 
 /**
- * Converts linked list of tokens to an array of tokens
- * 
- * @head: the head node of a given linked list
- * 
- */ 
-void token_list_to_arr(struct list_head *head, char **arr) {
-    if (list_empty(head)) return;
-
-    int i = 0;
-    struct token_t *token; // the wrapping structure of each node in the list
-    struct list_head *curr; // the current node we are at in the traversal
-
-    // list traversal in order and stops when we cycled back to the start (circularly linked list)
-    for (curr = head->next; curr != head; curr = curr->next) {
-        // extract the nodes structure
-        token = list_entry(curr, struct token_t, list);
-        arr[i++] = strdup(token->token_text);
-    }
-    arr[i] = NULL;
-}
-
-
-/**
  * Free all allocated memory to hold list of tokens
  * 
  * @list: head node of list to free
