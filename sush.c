@@ -85,7 +85,5 @@ int main(int argc, char *argv[], char *envp[]) {
         }
     }
 
-    environ_clean_up();
-
     return 0;
 }
