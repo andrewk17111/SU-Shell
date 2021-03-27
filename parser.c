@@ -448,7 +448,7 @@ int tokens_to_command(struct command_t *command, struct list_head *head, int com
  * 
  * @return status which descibes if all redirection was valid
  */ 
-int handle_redirection_tokens(struct list_head *head) {
+int has_valid_redirection(struct list_head *head) {
     struct list_head *curr;
     struct token_t *token;
 
@@ -556,14 +556,13 @@ void tokenizer(struct list_head *list_tokens, char *cmdline) {
  **/ 
 int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline) {
 
-    int rc = 0; // catch return codes
+    int rc;
 
     char **subcommands_arr = malloc(sizeof(char *) * num_commands); 
     split_cmdline(subcommands_arr, cmdline);
 
     // parse each subcommands
     for (int i = 0; i < num_commands; i++) {
-
         // Initialize token list for sub command
         LIST_HEAD(list_tokens);
 
@@ -571,21 +570,15 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
         tokenizer(&list_tokens, subcommands_arr[i]);
 
         // verifies token arrangement is valid for any present redirection
-        rc = handle_redirection_tokens(&list_tokens);
+        rc = has_valid_redirection(&list_tokens);
         if (rc < 0) return RETURN_ERROR;
 
         // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
         rc = tokens_to_command(command, &list_tokens, i, num_commands);
+        if (rc < 0) return RETURN_ERROR;
 
-        // if error building command, return 
-        if (rc < 0) {
-            return RETURN_ERROR;
-        } 
-        // success, add command structure to array of commands
-        else {
-            commands_arr[i] = command;
-        }    
+        commands_arr[i] = command;
 
         // free token list for parsed subcommand
         clear_list(&list_tokens);

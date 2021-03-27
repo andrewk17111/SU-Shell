@@ -6,6 +6,7 @@
 #include "error.h"
 #include "environ.h"
 #include <dirent.h>
+#include <stdlib.h>
 
 struct internal_command_t {
     char *name;
@@ -13,6 +14,11 @@ struct internal_command_t {
     int (*handler)(struct command_t *cmd);
 };
 
+/**
+ * Handles the setenv internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int handle_setenv(struct command_t *cmd) {
     if (cmd->num_tokens - 2 == 2) {
         environ_set_var(cmd->tokens[1], cmd->tokens[2]);
@@ -22,6 +28,11 @@ int handle_setenv(struct command_t *cmd) {
     return 0;
 }
 
+/**
+ * Handles the getenv internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int handle_getenv(struct command_t *cmd) {
     if (cmd->num_tokens - 2 == 0) {
         environ_print();
@@ -37,6 +48,11 @@ int handle_getenv(struct command_t *cmd) {
     return 0;
 }
 
+/**
+ * Handles the unsetenv internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int handle_unsetenv(struct command_t *cmd) {
     if (cmd->num_tokens - 2 == 1) {
         if (environ_var_exist(cmd->tokens[1]))
@@ -47,6 +63,11 @@ int handle_unsetenv(struct command_t *cmd) {
     return 0;
 }
 
+/**
+ * Handles the cd internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int handle_cd(struct command_t *cmd) {
     if (cmd->num_tokens - 2 == 0) {
         environ_set_var("PWD", "~");
@@ -64,6 +85,11 @@ int handle_cd(struct command_t *cmd) {
     return 0;
 }
 
+/**
+ * Handles the pwd internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int handle_pwd(struct command_t *cmd) {
     if (cmd->num_tokens - 2 == 0) {
         if (environ_var_exist("PWD")) {
@@ -75,10 +101,18 @@ int handle_pwd(struct command_t *cmd) {
     return 0;
 }
 
+/**
+ * Handles the exit internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int handle_exit(struct command_t *cmd) {
     if (cmd->num_tokens - 2 != 0) {
         LOG_ERROR(ERROR_EXIT_ARG);
     }
+    
+    environ_clean_up();
+    exit(0);
     return 0;
 }
 
@@ -92,6 +126,11 @@ struct internal_command_t internal_cmds[] = {
     NULL
 };
 
+/**
+ * Checks if the given command is an internal command
+ * 
+ * @param cmd - The command to check
+ */
 bool is_internal_command(struct command_t *cmd) {
     for (int i = 0; internal_cmds[i].name != NULL; i++) {
         if (strcmp(internal_cmds[i].name, cmd->cmd_name) == 0)
@@ -100,9 +139,15 @@ bool is_internal_command(struct command_t *cmd) {
     return false;
 }
 
+/**
+ * Executed the given internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int execute_internal_command(struct command_t *cmd) {
     for (int i = 0; internal_cmds[i].name != NULL; i++) {
         if (strcmp(internal_cmds[i].name, cmd->cmd_name) == 0)
             return internal_cmds[i].handler(cmd);
     }
+    return 0;
 }

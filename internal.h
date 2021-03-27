@@ -1,8 +1,16 @@
 #include <stdbool.h>
 #include "cmdline.h"
 
-// check if command is in internal cmd table
+/**
+ * Checks if the given command is an internal command
+ * 
+ * @param cmd - The command to check
+ */
 bool is_internal_command(struct command_t *cmd);
 
-// executes internal command
+/**
+ * Executed the given internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int execute_internal_command(struct command_t *cmd);
