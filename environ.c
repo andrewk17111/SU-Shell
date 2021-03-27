@@ -90,6 +90,7 @@ void environ_init(char **envp) {
         free(environ_var_val);
     }
     environ_set_var("PS1", ">");
+    environ_set_var("SUSHHOME", environ_get_var("PWD")->value);
 }
 
 /**
