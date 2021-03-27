@@ -9,41 +9,38 @@
 #include "environ.h"
 
 
-void print_command_struct(struct command_t *command) {
-    printf("*********************************\n");
+void print_commands(struct command_t *commands[], int num_cmds) {
+    struct command_t *command;
 
-    // ->num_tokens
-    printf("    num_tokens -> %d\n", command->num_tokens);
+    for (int i=0; i<num_cmds; i++) {
+        command = commands[i];    
+        printf("*********************************\n");
+        // ->num_tokens
+        printf("    num_tokens -> %d\n", command->num_tokens);
+        printf("    cmd_name -> %s\n", command->cmd_name);
+        
+        // ->tokens
+        printf("    tokens -> ");
+        for (int i = 0; i < command->num_tokens; i++) {
+            printf("[%s] ", command->tokens[i]);
+        }
+        printf("\n");
 
-    printf("    cmd_name -> %s\n", command->cmd_name);
-    
-    // ->tokens
-    printf("    tokens -> ");
-    for (int i = 0; i < command->num_tokens; i++) {
-        printf("[%s] ", command->tokens[i]);
+        // ->file_in
+        printf("    file_in -> %d\n", command->file_in);
+        printf("    infile -> %s\n", command->infile);
+
+        // ->file_out
+        printf("    file_out -> %d\n", command->file_out);
+        printf("    outfile -> %s\n", command->outfile);
+
+        // ->pipe_in and pipe_out
+        printf("    pipe_in -> %d\n", command->pipe_in);
+        printf("    pipe_out -> %d\n", command->pipe_out);
+
+        printf("*********************************\n");
     }
-    printf("\n");
-
-    // ->file_in
-    printf("    file_in -> %d\n", command->file_in);
-    printf("    infile -> %s\n", command->infile);
-
-    // ->file_out
-    printf("    file_out -> %d\n", command->file_out);
-    printf("    outfile -> %s\n", command->outfile);
-
-    // ->pipe_in and pipe_out
-    printf("    pipe_in -> %d\n", command->pipe_in);
-    printf("    pipe_out -> %d\n", command->pipe_out);
-
-    printf("*********************************\n");
 }
-
-void print_command_list(struct command_t *commands[], int num_cmds) {
-    for (int i=0; i<num_cmds; i++) 
-        print_command_struct(commands[i]);
-}
-
 
 
 /**
@@ -114,15 +111,12 @@ int do_command(char *cmdline) {
     rc = parse_command(commands_arr, num_commands, cmdline);
     if (rc < 0) return rc;
 
-    if (num_commands == 1 && is_internal_command(commands_arr[0])) {
+    if (is_internal_command(commands_arr[0])) {
         execute_internal_command(commands_arr[0]);
     } else {
         execute_external_command(commands_arr, num_commands);
     }
     
-    print_command_list(commands_arr, num_commands);
-    
-
     // release all memory allocated to hold commands
     runner_clean_up(commands_arr, num_commands);
 
