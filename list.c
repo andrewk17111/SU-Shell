@@ -114,28 +114,3 @@ int list_size(struct list_head *head) {
 
     return size; 
 }
-
-
-/**
- * Free all allocated memory to hold list of tokens
- * 
- * @list: head node of list to free
- **/ 
-void clear_list(struct list_head *list) {
-    struct token_t *token; // the wrapping structure of each node in the list
-
-    // traverse until no nodes remain in list
-    while (!list_empty(list)) {
-        // extract token
-        token = list_entry(list->next, struct token_t, list);
-
-        // free token text
-        free(token->token_text);
-
-        // remove node from list
-        list_del(&token->list);
-
-        // free node
-        free(token);           
-    }
-}

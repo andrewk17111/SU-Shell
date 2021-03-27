@@ -20,15 +20,6 @@
 #define RETURN_SUCCESS 0 
 
 
-// Definition of all types that any given token can be
-enum token_types_e {
-    TOKEN_NORMAL,
-    TOKEN_REDIR,
-    TOKEN_FNAME_IN,
-    TOKEN_FNAME_OUT_OVERWRITE,
-    TOKEN_FNAME_OUT_APPEND,
-};
-
 
 // Definition of all types of redirection
 enum redirect_type_e {
@@ -38,43 +29,27 @@ enum redirect_type_e {
     FILE_OUT_APPEND
 };
 
-/**
- * The command parser extracts parts of a given command which we call tokens. 
- * These parts are stored in this structure to hold all relevant information
- * needed throughout the shell about each token.
- * 
- * @token_text: the literal string value of the token
- * @token_type: described by a value of the token_types_e enum, this is used
- *      to identify the role of the token within the command
- * @list: each token is a member of a list 
- **/ 
-struct token_t {
-    char *token_text;
-    enum token_types_e token_type;
-    struct list_head list;
-};
-
 
 /**
  * The command data structure which holds all information needed by the shell to execute the command
  * 
- * @num_tokens: number of tokens that were parsed
+ * @cmd_name: name of executable
  * @tokens: array of token strings
+ * @num_tokens: number of tokens that were parsed
  * 
- * @pipe_in: command reads from pipe
- * @pipe_out: command writes to pipe
+ * @pipe_in: does command read from pipe
+ * @pipe_out: does command write to pipe
  * 
- * @file_in: command writes to file
+ * @file_in: does command write to file
  * @infile: name of file to write to 
  * 
- * @file_out: command reads from file
+ * @file_out: does command read from file
  * @outfile: name of file to read from
  **/ 
 struct command_t {
-    int num_tokens;
-    char **tokens;
-
     char *cmd_name;
+    char **tokens;
+    int num_tokens;
 
     int pipe_in;
     int pipe_out;
