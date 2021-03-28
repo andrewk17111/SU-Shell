@@ -125,5 +125,5 @@ int do_command(char *cmdline) {
     // release all memory allocated to hold commands
     runner_clean_up(commands_arr, num_commands);
 
-    return 0;
+    return rc;
 }

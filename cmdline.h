@@ -63,7 +63,6 @@ struct command_t {
     int fid_out;
 };
 
-
 /**
  * Takes the command line input, parses the command and executes the array of commands
  * 
