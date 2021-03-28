@@ -114,7 +114,7 @@ int do_command(char *cmdline) {
         return rc;
     }
 
-    // print_commands(commands_arr, num_commands);
+    print_commands(commands_arr, num_commands);
 
     if (is_internal_command(commands_arr[0])) {
         rc = execute_internal_command(commands_arr[0]);
@@ -124,6 +124,5 @@ int do_command(char *cmdline) {
     
     // release all memory allocated to hold commands
     runner_clean_up(commands_arr, num_commands);
-
     return rc;
 }

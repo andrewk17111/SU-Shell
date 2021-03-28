@@ -69,8 +69,8 @@ int main(int argc, char *argv[], char *envp[]) {
 
     // Command Processing
     char cmdline[CMD_BUFFER];
-    while(1) {
-        printf("%s ", environ_get_var("PS1")->value);
+    for (int i = 0; i < 10; i++) {
+        printf("%s", environ_get_var("PS1")->value);
         fflush(stdout);
 
         if (fgets(cmdline, CMD_BUFFER - 1, stdin) != NULL ) {
@@ -78,9 +78,8 @@ int main(int argc, char *argv[], char *envp[]) {
             // if not empty command, execute
             if (cmdline[0] != '\n') {
                 rc = do_command(cmdline);
-                if (rc == 2) {
-                    break;
-                }
+                if (rc == 2)
+                    return 0;
             }
         }
     }
