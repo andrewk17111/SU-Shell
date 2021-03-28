@@ -7,6 +7,7 @@
 #include "internal.h"
 #include "executor.h"
 #include "environ.h"
+#include "background.h"
 
 
 void print_commands(struct command_t *commands[], int num_cmds) {
@@ -106,24 +107,33 @@ int do_command(char *cmdline) {
     // count number of commands and allocate memory to hold n command stucts
     int num_commands = get_num_subcommands(cmdline);
     struct command_t **commands_arr = malloc(sizeof(struct command_t *) * num_commands);
-
-    // parse commands to populate array of command structs
-    rc = parse_command(commands_arr, num_commands, cmdline);
-    if (rc < 0) {
-        LOG_ERROR(ERROR_INVALID_CMDLINE);
-        return rc;
-    }
-
-    // print_commands(commands_arr, num_commands);
-
-    if (is_internal_command(commands_arr[0])) {
-        rc = execute_internal_command(commands_arr[0]);
-    } else {
-        rc = execute_external_command(commands_arr, num_commands);
-    }
     
-    // release all memory allocated to hold commands
-    runner_clean_up(commands_arr, num_commands);
+    if (is_background_command(cmdline)) {
+        background_command_handler(cmdline);
+    }
 
-    return rc;
+    else {
+
+        // parse commands to populate array of command structs
+        rc = parse_command(commands_arr, num_commands, cmdline);
+        if (rc < 0) {
+            LOG_ERROR(ERROR_INVALID_CMDLINE);
+            return rc;
+        }
+
+        // print_commands(commands_arr, num_commands);
+
+        if (is_internal_command(commands_arr[0])) {
+            rc = execute_internal_command(commands_arr[0]);
+        } else {
+            rc = execute_external_command(commands_arr, num_commands);
+        }
+
+        // release all memory allocated to hold commands
+        runner_clean_up(commands_arr, num_commands);
+
+        return rc;        
+    }
+
+   
 }
