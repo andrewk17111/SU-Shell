@@ -223,6 +223,11 @@ void add_token_node(struct state_machine_t *sm, struct list_head *head, char *te
 
     list_add_tail(&token->list, head);
     free(text);
+
+    // reset statemachine before it moves to next iteration
+    sm->sub_start = sm->position;
+    sm->sub_len = 0;
+    sm->state = WHITESPACE;
 }
 
 
@@ -607,13 +612,7 @@ void parse_redirection_token(struct state_machine_t *sm, char c, struct list_hea
         // just a single redirection < so add it to list
         char *redir_tok = sub_string(cmdline, sm->position, 1);
         add_token_node(sm, list_tokens, redir_tok);
-
     }
-
-    // reset statemachine before it moves to next iteration
-    sm->sub_start = sm->position;
-    sm->sub_len = 0;
-    sm->state = WHITESPACE;
 }
 
 
