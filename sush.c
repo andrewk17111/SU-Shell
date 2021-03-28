@@ -73,7 +73,7 @@ int main(int argc, char *argv[], char *envp[]) {
         printf("%s ", environ_get_var("PS1")->value);
         fflush(stdout);
 
-        if (fgets(cmdline, CMD_BUFFER-1, stdin) != NULL ) {
+        if (fgets(cmdline, CMD_BUFFER - 1, stdin) != NULL ) {
 
             // if not empty command, execute
             if (cmdline[0] != '\n') {

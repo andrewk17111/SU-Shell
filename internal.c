@@ -114,7 +114,6 @@ int handle_exit(struct command_t *cmd) {
         return -1;
     }
     environ_clean_up();
-    exit(EXIT_SUCCESS);
     return 2;
 }
 

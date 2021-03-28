@@ -1,1 +1,2 @@
 setenv PS1 $
+pwd
