@@ -17,13 +17,11 @@
 
 #define CMD_BUFFER 512 
 
-
 /**
  * If user defined startup command in the .sushrc file and has permission
  * to read and execute commands, the function executes each command
  */ 
 void run_startup_commands() {
-    // build .sushrc filepath
     char *sushhome = environ_get_var("SUSHHOME")->value;
     char *filename = malloc(strlen(sushhome) + 9);
     strcpy(filename, sushhome);
@@ -39,15 +37,21 @@ void run_startup_commands() {
 
         // read and execute each line
         char cmdline[CMD_BUFFER];
-        while (fgets(cmdline, CMD_BUFFER, fp) != NULL) {
-            do_command(cmdline);
+        while (fgets(cmdline, CMD_BUFFER - 2, fp)) {
+            //printf("STARTUP: %s\n", cmdline);
+            strcat(cmdline, "\n");
+            if (cmdline != NULL && cmdline[0] != '\n' && cmdline[0] != '\0') {
+                int rc = do_command(cmdline);
+                if (rc == 2) {
+                    break;
+                }
+            }
         }
 
         //close file
         fclose(fp);
     }
 }
-
 
 /**
  * Launches the shell by first initializing environement, executing any
@@ -74,6 +78,9 @@ int main(int argc, char *argv[], char *envp[]) {
             // if not empty command, execute
             if (cmdline[0] != '\n') {
                 rc = do_command(cmdline);
+                if (rc == 2) {
+                    break;
+                }
             }
         }
     }

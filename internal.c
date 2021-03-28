@@ -115,7 +115,7 @@ int handle_exit(struct command_t *cmd) {
     }
     environ_clean_up();
     exit(EXIT_SUCCESS);
-    return 0;
+    return 2;
 }
 
 struct internal_command_t internal_cmds[] = {
