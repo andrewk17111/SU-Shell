@@ -236,7 +236,7 @@ int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const e
     rc = set_stdout(command, pipe_out);
     if (rc < 0) return RETURN_ERROR;
 
-    rc = set_stdin(command, pipe_out);
+    rc = set_stdin(command, pipe_in);
     if (rc < 0) return RETURN_ERROR;
 
     // execute command
@@ -298,17 +298,14 @@ int fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *co
  * 
  * @return status of command execution
  */ 
-int setup_and_execute_command(struct command_t *command, int pipes_fd[2], int pipe_in, char *const envp[]) {
+int setup_and_execute_command(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
 
     // creates/opens any files to be used for command redirection
     rc = setup_command_redirection(command);
     if (rc < 0) return RETURN_ERROR;
 
-    rc = pipe(pipes_fd);
-    if (rc < 0) return RETURN_ERROR;
-
-    rc = fork_and_exec(command, pipe_in, pipes_fd[1], envp);
+    rc = fork_and_exec(command, pipe_in, pipe_out, envp);
     if (rc < 0) return RETURN_ERROR;
 
     return RETURN_SUCCESS;
@@ -342,8 +339,11 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
 
     // fork and execute each command except last (or first if only 1 command is given)
     for (i=0; i<num_commands-1; ++i) {
+        rc = pipe(pipes_fd);
+        if (rc < 0) return RETURN_ERROR;
+
         // use struct to setup execution behavior and execute command
-        rc = setup_and_execute_command(commands_arr[i], pipes_fd, pipe_in, envp);
+        rc = setup_and_execute_command(commands_arr[i], pipe_in, pipes_fd[1], envp);
         if (rc < 0) return RETURN_ERROR;
 
         // close writing end of pipe, the child will write to it's copy
@@ -354,15 +354,9 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
         pipe_in = pipes_fd[0];
     }
 
-
-    // if pipe_in is no longer 0, previous command is piping into the last command to execute
-    if (pipe_in != 0) {
-        rc = dup2(pipe_in, STDIN_FILENO);
-        if (rc < 0) return RETURN_ERROR;
-    }
-
     // setup and execute remaining (or single) command
-    rc = setup_and_execute_command(commands_arr[i], pipes_fd, pipe_in, envp);
+    // if nth command, pipe_in will be set to the read end of the pipe the previous command wrote to
+    rc = setup_and_execute_command(commands_arr[i], pipe_in, -1, envp);
     if (rc < 0) return RETURN_ERROR;
 
     // reset stdin and stdout to default
