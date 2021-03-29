@@ -91,10 +91,6 @@ void environ_init(char **envp) {
         // Free the name and value string array.
         free(environ_var_val);
     }
-    // Setup PS1 for the prompt.
-    environ_set_var("PS1", ">");
-    // Setup SUSHHOME for .sushrc.
-    environ_set_var("SUSHHOME", environ_get_var("PWD")->value);
 }
 
 /**
