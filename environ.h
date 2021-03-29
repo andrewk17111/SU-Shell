@@ -59,7 +59,6 @@ struct environ_var_t *environ_get_var(char *name);
  * Prints the current environment variables and their values
  **/
 void environ_print();
-
 /**
  * Cleans up and frees the variables used by environ.c
  */

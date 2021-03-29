@@ -1,3 +1,17 @@
+/**
+ * @file: environ.c
+ * @author: Andrew Kress
+ * 
+ * @brief: Handles the internal environment variables.
+ * 
+ * Using the different functions from this file,
+ * individual environment variables can be created,
+ * modified, deleted, and retrieved. The internal
+ * environment can also be created by a NULL terminated
+ * string array and a NULL terminated string array
+ * can be created from the internal environment.
+ */ 
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -8,23 +22,6 @@
 #include "cmdline.h"
 
 LIST_HEAD(environment);
-
-/**
- * Returns a string that starts at the given index at the length given
- * 
- * @param str - The source string you want to get a part of
- * @param start - The starting index of the substring
- * @param length - The length of the substring
- * 
- * @return extracted substring
- **/
-char *environ_sub_string(char* str, int start, int length) {
-    char* output = calloc(length + 1, sizeof(char));
-    for (int i = start; i < (start + length) && i < strlen(str); i++) {
-        output[i - start] = str[i];
-    }
-    return output;
-}
 
 /**
  * Returns a string array of the name and value for an evironment variable
@@ -43,8 +40,8 @@ char **split_environ_var(char *env_var_str) {
             break;
     }
 
-    env_var_arr[0] = environ_sub_string(env_var_str, 0, pivot);
-    env_var_arr[1] = environ_sub_string(env_var_str, pivot + 1, env_var_len);
+    env_var_arr[0] = sub_string(env_var_str, 0, pivot);
+    env_var_arr[1] = sub_string(env_var_str, pivot + 1, env_var_len);
     return env_var_arr;
 }
 

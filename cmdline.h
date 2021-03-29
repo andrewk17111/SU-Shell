@@ -46,6 +46,15 @@ struct command_t {
 };
 
 /**
+ * Returns a string that starts at the given index at the length given
+ * 
+ * @param str - The source string you want to get a part of
+ * @param start - The starting index of the substring
+ * @param length - The length of the substring
+ * @return extracted substring
+ */
+char * sub_string(char* str, int start, int length);
+/**
  * Takes the command line input, parses the command and executes the array of commands
  * 
  * @param cmdline: the command that was entered by user
