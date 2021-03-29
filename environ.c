@@ -65,9 +65,7 @@ char **make_environ() {
         envp[i] = string;
         i++;
     }
-    //printf("%d\n", i);
     envp[i] = NULL;
-    //printf("%d %p\n", i, envp[i]);
 
     return envp;
 }
