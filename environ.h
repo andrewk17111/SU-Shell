@@ -1,3 +1,13 @@
+/**
+ * @file: environ.h
+ * @author: Andrew Kress
+ * 
+ * @brief: Header file for the internal environment
+ * 
+ * Defines the environment variable struct and functions
+ * for interacting with the internal environment.
+ */ 
+
 #include <stddef.h>
 #include <stdbool.h>
 #include "list.h"
@@ -59,7 +69,6 @@ struct environ_var_t *environ_get_var(char *name);
  * Prints the current environment variables and their values
  **/
 void environ_print();
-
 /**
  * Cleans up and frees the variables used by environ.c
  */

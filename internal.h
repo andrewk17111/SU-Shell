@@ -1,3 +1,13 @@
+/**
+ * @file: internal.h
+ * @author: Andrew Kress
+ * 
+ * @brief: Header file for internal commands
+ * 
+ * Defines functions for checking if a command is internal
+ * and executing and internal command.
+ */ 
+
 #include <stdbool.h>
 #include "cmdline.h"
 
