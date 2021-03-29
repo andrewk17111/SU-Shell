@@ -76,15 +76,24 @@ char **make_environ() {
  * @param envp - Environment string array like envp from main
  **/
 void environ_init(char **envp) {
+    // Loop through the given envp values.
     for (int i = 0; envp[i] != NULL; i++) {
+        // Create a new environment variable.
         struct environ_var_t *var = malloc(sizeof(struct environ_var_t));
+        // Create a string array of the variable name and value.
         char **environ_var_val = split_environ_var(envp[i]);
+        // Set the variable name and value.
         var->name = environ_var_val[0];
         var->value = environ_var_val[1];
+        // Add the new environment variable to the
+        // internal environment list.
         list_add_tail(&var->list, &environment);
+        // Free the name and value string array.
         free(environ_var_val);
     }
+    // Setup PS1 for the prompt.
     environ_set_var("PS1", ">");
+    // Setup SUSHHOME for .sushrc.
     environ_set_var("SUSHHOME", environ_get_var("PWD")->value);
 }
 
@@ -96,15 +105,18 @@ void environ_init(char **envp) {
  * @return true if variable exists in the environment; false if it doesn't
  **/
 bool environ_var_exist(char *name) {
-    int x = 0;
+    // Loop through the internal environment.
     struct list_head *head = &environment;
     struct list_head *curr;
     struct environ_var_t *env_var;
     for (curr = head->next; curr != head; curr = curr->next) {
+        // Get the environment variable for the current list item.
         env_var = list_entry(curr, struct environ_var_t, list);
+        // If the environment variable's name matches, return true;
         if (env_var != NULL && strcmp(env_var->name, name) == 0)
             return true;
     }
+    // If none of the environment variables match, return false.
     return false;
 }
 
@@ -115,9 +127,13 @@ bool environ_var_exist(char *name) {
  * @param value - Value of the new environment variable
  **/
 void environ_add_var(char *name, char *value) {
+    // Create new environment variable.
     struct environ_var_t *var = malloc(sizeof(struct environ_var_t));
+    // Assign environment variable's name and value
+    // to the given name and value.
     var->name = strdup(name);
     var->value = strdup(value);
+    // Add the environment variable's list item to the list.
     list_add_tail(&var->list, &environment);
 }
 
@@ -128,8 +144,11 @@ void environ_add_var(char *name, char *value) {
  * @param value - Value of the environment variable
  **/
 void environ_update_var(char *name, char *value) {
+    // Get the requested environment variable.
     struct environ_var_t *var = environ_get_var(name);
+    // Free the old value.
     free(var->value);
+    // Set the value to equal the given value.
     var->value = strdup(value);
 }
 
@@ -141,6 +160,9 @@ void environ_update_var(char *name, char *value) {
  * @param value - Value of the environment variable
  **/
 void environ_set_var(char *name, char *value) {
+    // If the requested environment variable exists,
+    // update its value with the given value,
+    // otherwise, add it to the list with the given value.
     if (environ_var_exist(name))
         environ_update_var(name, value);
     else
@@ -154,9 +176,14 @@ void environ_set_var(char *name, char *value) {
  * @param name - Name of the environment variable
  **/
 void environ_remove_var(char *name) {
+    // If the requested environment variable exists,
+    // remove it from the list.
     if (environ_var_exist(name)) {
+        // Get the given environment variable.
         struct environ_var_t *var = environ_get_var(name);
+        // Remove the list item from the internal environment.
         list_del(&var->list);
+        // Free the environment variable.
         free(var->name);
         free(var->value);
         free(var);
@@ -172,12 +199,19 @@ void environ_remove_var(char *name) {
  * @return The environment variable
  **/
 struct environ_var_t *environ_get_var(char *name) {
+    // If the requested environment variable exists,
+    // get the value of the variable.
     if (environ_var_exist(name)) {
+        // Loop through the environment variables.
         struct list_head *head = &environment;
         struct list_head *curr;
         struct environ_var_t *env_var;
         for (curr = head->next; curr != head; curr = curr->next) {
+            // Get the value of the environment variable for the
+            // current list item.
             env_var = list_entry(curr, struct environ_var_t, list);
+            // Check if the environment variable's name matches
+            // the requested variable and return if it matches.
             if (strcmp(env_var->name, name) == 0)
                 return env_var;
         }
@@ -189,6 +223,8 @@ struct environ_var_t *environ_get_var(char *name) {
  * Prints the current environment variables and their values
  **/
 void environ_print() {
+    // Loop through the internal environment
+    // and print the values.
     char **env = make_environ();
     for (int i = 0; env[i] != NULL; i++) {
         printf("%s\n", env[i]);
@@ -201,12 +237,17 @@ void environ_print() {
  * Cleans up and frees the variables used by environ.c
  */
 void environ_clean_up() {
+    // Loop through the internal environment.
     struct list_head *head = &environment;
     struct list_head *curr = head->next;
     struct environ_var_t *env_var;
     while (curr != head) {
+        // Get the environment variable for the list item.
         env_var = list_entry(curr, struct environ_var_t, list);
+        // Delete the current list item.
         curr = curr->next;
+        list_del(curr->prev);
+        // Free the environment variable.
         free(env_var->name);
         free(env_var->value);
         free(env_var);
