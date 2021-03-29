@@ -1,3 +1,12 @@
+/**
+ * @file: error.h
+ * @author: Michael Permyashkin
+ * @author: Andrew Kress
+ * @author: Dr Briggs
+ * 
+ * @brief: Header file for all error handling for the shell. Defines constants
+ * for each error message as well as a macro to print messages and errors.
+ */ 
 #ifndef MSGS_H
 #define MSGS_H
 

@@ -2,23 +2,17 @@
  * @file: list.c
  * @author: Michael Permyashkin
  * 
- * @brief: Implementations of linked list utilities functions for basic operations
+ * @brief: Implementations of linked list utilities functions for operations to a list.
  * 
- * Implementations of function signatures found in @file list.h. Functions perform
- * basic operations on the linked list such as:
- *      - adding a node
- *      - deleting a node
- *      - getting the length of the list
- *      - checking if the list is empty
- *      - printing contents of the list
+ * Functions defined provide the ability to add nodes, remove nodes, get the list size, 
+ * check is the list is empty and join lists.
  */ 
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "list.h"
-#include "cmdline.h"
 
+#include "list.h"
 
 /**
  * Adds the new item at to the list, at the front
@@ -48,26 +42,9 @@ void list_add_tail(struct list_head *new, struct list_head *head) {
 }
 
 
-/**
- * Joins two lists by insert list immediately after the head.
- *      Note: the original head node will point to the new list’s head node.  
- *      The new lists tail node will be updated to point to the original lists next node, completing the chain.
- * 
- * @param list: the linked list that goes directly in front of head (the front of the master list [A, B])
- * @param head: the linked list that goes after @list (the back of the master list [C, D])
- **/ 
-void list_splice(struct list_head *list, struct list_head *head) {
-    list->prev->next = head->next; // last node of list points to first node of head     (B -> C)
-    head->next->prev = list->prev; // first node of head points to the last node of list (B <-> C)
-    list->prev = head->prev;       // list prev points to the last node of head          (D <- list) 
-    head->next = list->next;       // head now points to the first node of list          (head -> A)
-    head->next->prev = head;       // head->next now points to A, so we now want:        (head <-> A)
-}
-
-
 /** Removes the item from the list.  
- *      Since the entry that is removed is no longer part of the original list, 
- *      update its next and prev pointers to itself (like LIST_INIT).
+ *  Since the entry that is removed is no longer part of the original list, 
+ *  update its next and prev pointers to itself (like LIST_INIT).
  *
  * @entry: the node we want to remove from the list
  **/  
