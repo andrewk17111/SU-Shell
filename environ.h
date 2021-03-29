@@ -1,3 +1,13 @@
+/**
+ * @file: environ.h
+ * @author: Andrew Kress
+ * 
+ * @brief: Header file for the internal environment
+ * 
+ * Defines the environment variable struct and functions
+ * for interacting with the internal environment.
+ */ 
+
 #include <stddef.h>
 #include <stdbool.h>
 #include "list.h"
