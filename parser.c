@@ -335,8 +335,9 @@ int is_valid_command(struct command_t *command) {
  * @param token_type: type of redirection 
  * @return true if set, false if redirection out already set and command is malformed
  */ 
-bool set_redirection_out(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
-    if (command->file_out != 0) {
+int set_redirection_out(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
+    // if redir out already set, error
+    if (command->file_out != REDIRECT_NONE) {
         return ERROR;
     }
 
@@ -357,7 +358,8 @@ bool set_redirection_out(struct command_t *command, struct token_t *token, enum 
  * @return true if set, false if redirection in already set and command is malformed
  */ 
 int set_redirection_in(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
-    if (command->file_in != 0) {
+    // if redir in already set, error
+    if (command->file_in != REDIRECT_NONE) {
         return ERROR;
     }
 
@@ -632,7 +634,7 @@ void do_char(struct state_machine_t *sm, char c, struct list_head *list_tokens, 
         sm->state = WHITESPACE;
     }
     // still inside a substring, increment substring length
-    else {
+    else{
         sm->sub_len++;
     }
 }
@@ -654,7 +656,7 @@ void do_quote(struct state_machine_t *sm, char c, struct list_head *list_tokens,
         sm->sub_len++;
     } 
     // we reached the end of quoted substring
-    else {
+    else if (c == '"') {
         // get substring and add argument to list
         char *text = sub_string(cmdline, sm->sub_start, --sm->sub_len);
         add_token_node(sm, list_tokens, text);
@@ -684,9 +686,12 @@ void tokenizer(struct state_machine_t *sm, struct list_head *list_tokens, char *
         // get character the statemachine is looking at
         char c = cmdline[sm->position];
 
-        if (c == '<' || c == '>') {
+        // if redirection and not between quotes, parse out
+        if (sm->state != QUOTE && (c == '<' || c == '>')) {
             parse_redirection_token(sm, c, list_tokens, cmdline);
-        } else {
+        }
+        // not redirection or within quotes
+        else {
             switch(sm->state) {
                 // character state
                 case CHAR:

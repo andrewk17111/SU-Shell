@@ -46,10 +46,7 @@ void run_startup_commands() {
 
         // read and execute each line
         char cmdline[CMD_BUFFER];
-        while (fgets(cmdline, CMD_BUFFER-1, fp)) {
-            // apprend newline to line
-            strcat(cmdline, "\n");
-
+        while (fgets(cmdline, CMD_BUFFER, fp)) {
             // if command was read, execute
             if (cmdline != NULL && cmdline[0] != '\n' && cmdline[0] != '\0') {
                 int rc = do_command(cmdline);
@@ -77,25 +74,24 @@ int main(int argc, char *argv[], char *envp[]) {
 
     // Prompt user and execute commands
     char cmdline[CMD_BUFFER];
-    while (1) {
-        // print prompt
+
+    // print prompt
+    printf("%s", environ_get_var("PS1")->value);
+    fflush(stdout);
+
+    while (fgets(cmdline, CMD_BUFFER, stdin) != NULL) {
+        // not empty command lines, execute
+        if (cmdline[0] != '\n') {
+            // execute command line
+            rc = do_command(cmdline);
+
+            // exit command success, break loop and exit shell
+            if (rc == EXIT_SHELL) break;
+        }
+
+        // print prompt again
         printf("%s", environ_get_var("PS1")->value);
         fflush(stdout);
-
-        if (fgets(cmdline, CMD_BUFFER, stdin) != NULL ) {
-
-            // if exit command, wait for return and end loop
-            if (strcmp(cmdline, "exit\n") == 0) {
-                rc = do_command(cmdline);
-                // exit command success, break loop and exit shell
-                if (rc) break;
-            }
-
-            // if not empty command, execute
-            else if (cmdline[0] != '\n') {
-                do_command(cmdline);
-            }
-        }
     }
 
     // clean up after exit command

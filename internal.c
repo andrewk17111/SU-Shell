@@ -38,7 +38,8 @@ int handle_getenv(struct command_t *cmd) {
         environ_print();
     } else if (cmd->num_tokens - 2 == 1) {
         if (environ_var_exist(cmd->tokens[1])) {
-            printf("%s\n", environ_get_var(cmd->tokens[1])->value);
+            struct environ_var_t *env_var = environ_get_var(cmd->tokens[1]);
+            printf("%s=%s\n", env_var->name, env_var->value);
         } else {
             LOG_ERROR(ERROR_GETENV_INVALID, cmd->tokens[1]);
         }
@@ -115,7 +116,7 @@ int handle_exit(struct command_t *cmd) {
         LOG_ERROR(ERROR_EXIT_ARG);
         return ERROR;
     }
-    return SUCCESS;
+    return EXIT_SHELL;
 }
 
 struct internal_command_t internal_cmds[] = {
