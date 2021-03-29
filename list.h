@@ -53,20 +53,44 @@ struct list_head
     struct list_head *next, *prev;
 };
 
+/**
+ * Adds the new item at to the list, at the front
+ * 
+ * @param new: the node we are adding
+ * @param head: the head node of the list we are prepending @new to
+ **/ 
 void list_add(struct list_head *new, struct list_head *head);
 
+/**
+ * Adds the new item at to the list, at the end
+ * 
+ * @param new: the node we are adding
+ * @param head: the head node of the list we are appending @new to
+ **/ 
 void list_add_tail(struct list_head *new, struct list_head *head);
 
+/** Removes the item from the list.  
+ *  Since the entry that is removed is no longer part of the original list, 
+ *  update its next and prev pointers to itself (like LIST_INIT).
+ *
+ * @entry: the node we want to remove from the list
+ **/ 
 void list_del(struct list_head *entry);
 
+/**
+ * Returns non-zero if the list is empty, or 0 if the list is not empty.
+ * 
+ * @param head: head node of the list we are checking
+ * @return: 0 if not empty, 1 if empty
+ **/ 
 int list_empty(struct list_head *head);
 
+/**
+ * Returns the length of the linked list given head node
+ * 
+ * @param head: head node of the list we are checking
+ * @return: size of the lists
+ **/ 
 int list_size(struct list_head *head);
-
-void list_splice(struct list_head *list, struct list_head *head);
-
-void list_print(struct list_head *head);
-
-void clear_list(struct list_head *list);
 
 #endif
