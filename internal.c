@@ -11,7 +11,6 @@
 
 struct internal_command_t {
     char *name;
-    int argc;
     int (*handler)(struct command_t *cmd);
 };
 
@@ -81,6 +80,9 @@ int handle_cd(struct command_t *cmd) {
         }
     } else if (cmd->num_tokens - 2 == 1) {
         chdir(cmd->tokens[1]);
+        char *cwd = malloc(1024);
+        getcwd(cwd, 1024);
+        environ_set_var("PWD", cwd);
     } else {
         LOG_ERROR(ERROR_CD_ARG);
     }
@@ -113,14 +115,14 @@ int handle_exit(struct command_t *cmd) {
         LOG_ERROR(ERROR_EXIT_ARG);
         return -1;
     }
-    environ_clean_up();
+    //environ_clean_up();
     return 2;
 }
 
 struct internal_command_t internal_cmds[] = {
     { .name = "setenv", .handler = handle_setenv },
     { .name = "getenv", .handler = handle_getenv },
-    { .name = "unsetenv", .argc = 1, .handler = handle_unsetenv },
+    { .name = "unsetenv", .handler = handle_unsetenv },
     { .name = "cd", .handler = handle_cd },
     { .name = "pwd", .handler = handle_pwd },
     { .name = "exit", .handler = handle_exit },

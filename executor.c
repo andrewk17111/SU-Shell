@@ -262,7 +262,7 @@ int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const e
 void do_parent(int pid) {
     int status;
     waitpid(pid, &status, 0);
-    printf("Child %d Exited: %d\n", pid, status);
+    //printf("Child %d Exited: %d\n", pid, status);
 }
 
 
