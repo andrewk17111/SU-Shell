@@ -14,6 +14,10 @@
 #define CMDLINE_H
 
 
+#define ERROR -1
+#define SUCCESS 1
+#define EXIT_SHELL 999
+
 // Definition of all types of redirection
 enum redirect_type_e {
     REDIRECT_NONE,
@@ -58,6 +62,6 @@ int do_command(char *cmdline);
  * 
  * @return status of command line parsing
  **/ 
-bool parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline);
+int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline);
 
 #endif

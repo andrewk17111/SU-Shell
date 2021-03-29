@@ -25,7 +25,7 @@ int handle_setenv(struct command_t *cmd) {
     } else {
         LOG_ERROR(ERROR_SETENV_ARG);
     }
-    return 0;
+    return SUCCESS;
 }
 
 /**
@@ -45,7 +45,7 @@ int handle_getenv(struct command_t *cmd) {
     } else {
         LOG_ERROR(ERROR_GETENV_ARG);
     }
-    return 0;
+    return SUCCESS;
 }
 
 /**
@@ -60,7 +60,7 @@ int handle_unsetenv(struct command_t *cmd) {
     } else {
         LOG_ERROR(ERROR_UNSETENV_ARG);
     }
-    return 0;
+    return SUCCESS;
 }
 
 /**
@@ -86,7 +86,7 @@ int handle_cd(struct command_t *cmd) {
     } else {
         LOG_ERROR(ERROR_CD_ARG);
     }
-    return 0;
+    return SUCCESS;
 }
 
 /**
@@ -102,7 +102,7 @@ int handle_pwd(struct command_t *cmd) {
     } else {
         LOG_ERROR(ERROR_PWD_ARG);
     }
-    return 0;
+    return SUCCESS;
 }
 
 /**
@@ -113,10 +113,9 @@ int handle_pwd(struct command_t *cmd) {
 int handle_exit(struct command_t *cmd) {
     if (cmd->num_tokens - 2 != 0) {
         LOG_ERROR(ERROR_EXIT_ARG);
-        return -1;
+        return ERROR;
     }
-    //environ_clean_up();
-    return 2;
+    return SUCCESS;
 }
 
 struct internal_command_t internal_cmds[] = {

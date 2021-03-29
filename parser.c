@@ -261,18 +261,18 @@ int is_redirection_text(char *token_type) {
  * @param out_fname: name of file for redirection
  * @return true or false
  */ 
-bool is_valid_stdin(int pipe_in, enum redirect_type_e redir_type, char *in_fname) {
+int is_valid_stdin(int pipe_in, enum redirect_type_e redir_type, char *in_fname) {
     // stdin can only be redirected once
     if (pipe_in && redir_type == FILE_IN) {
-        return false;
+        return ERROR;
     }
 
     // if rediction in but no filename, error
     if (redir_type == FILE_IN && in_fname == NULL) {
-        return false;
+        return ERROR;
     }
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -290,15 +290,15 @@ bool is_valid_stdin(int pipe_in, enum redirect_type_e redir_type, char *in_fname
 bool is_valid_stdout(int pipe_out, enum redirect_type_e redir_type, char *out_fname) {
     // stdout can only be redirected once
     if (pipe_out && (redir_type == FILE_OUT_OVERWRITE || redir_type == FILE_OUT_APPEND)) {
-        return false;
+        return ERROR;
     }
 
     // if rediction in but no filename, error
     if ((redir_type == FILE_OUT_OVERWRITE || redir_type == FILE_OUT_APPEND) && out_fname == NULL) {
-        return false;
+        return ERROR;
     }
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -311,22 +311,18 @@ bool is_valid_stdout(int pipe_out, enum redirect_type_e redir_type, char *out_fn
  * @param command: complete command struct to validate
  * @return true or false if commands stdin and stdout are valid
  */ 
-bool is_valid_command(struct command_t *command) {
+int is_valid_command(struct command_t *command) {
     int rc;
 
     // check stdin configuration
     rc = is_valid_stdin(command->pipe_in, command->file_in, command->infile);
-    if (rc < 0) {
-        return false;
-    }
+    if (rc < 0) return ERROR;
 
     // check stdout configuration
     rc = is_valid_stdout(command->pipe_out, command->file_out, command->outfile);
-    if (rc < 0) {
-        return false;
-    }
+    if (rc < 0) return ERROR;
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -341,13 +337,13 @@ bool is_valid_command(struct command_t *command) {
  */ 
 bool set_redirection_out(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
     if (command->file_out != 0) {
-        return false;
+        return ERROR;
     }
 
     command->outfile = strdup(token->token_text);
     command->file_out = token_type;
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -360,15 +356,15 @@ bool set_redirection_out(struct command_t *command, struct token_t *token, enum 
  * @param token_type: type of redirection 
  * @return true if set, false if redirection in already set and command is malformed
  */ 
-bool set_redirection_in(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
+int set_redirection_in(struct command_t *command, struct token_t *token, enum redirect_type_e token_type) {
     if (command->file_in != 0) {
-        return false;
+        return ERROR;
     }
 
     command->infile = strdup(token->token_text);
     command->file_in = token_type;
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -405,7 +401,7 @@ int set_command_redirections(struct command_t *command, struct list_head *head) 
             }
 
             // if any errors, return error
-            if (rc < 0) return false;
+            if (rc < 0) return ERROR;
 
             // update current node after deleting the filename node
             struct list_head *next = curr->next;
@@ -414,7 +410,7 @@ int set_command_redirections(struct command_t *command, struct list_head *head) 
         }
     }
 
-    return true; 
+    return SUCCESS; 
 }
 
 
@@ -471,12 +467,12 @@ int tokens_to_command(struct command_t *command, struct list_head *head, int com
 
     // set command file params and check return code if command was malformed
     rc = set_command_redirections(command, head);
-    if (rc < 0) return false;
+    if (rc < 0) return ERROR;
 
     // set command tokens array
     set_command_tokens(command, head);
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -489,7 +485,7 @@ int tokens_to_command(struct command_t *command, struct list_head *head, int com
  * @param head: linked list hold tokens of the command
  * @return status which descibes if all redirection was valid
  */ 
-bool is_tokens_redirection_valid(struct list_head *head) {
+int is_tokens_redirection_valid(struct list_head *head) {
     struct list_head *curr;
     struct token_t *token;
 
@@ -502,7 +498,7 @@ bool is_tokens_redirection_valid(struct list_head *head) {
         if (is_redirection_text(tokstr)) {
             // redirection should not be last node is list
             if (curr->next == head) {
-                return false;
+                return ERROR;
             } else {
                 // get token after redirection
                 struct token_t *fname_tok = list_entry(curr->next, struct token_t, list);
@@ -527,7 +523,7 @@ bool is_tokens_redirection_valid(struct list_head *head) {
         }
     }
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -730,7 +726,7 @@ void tokenizer(struct state_machine_t *sm, struct list_head *list_tokens, char *
  * 
  * @return status of command parsing
  */ 
-bool parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline) {
+int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline) {
     int rc;
 
     // split command line by pipes and store sub commands in array
@@ -749,18 +745,18 @@ bool parse_command(struct command_t *commands_arr[], int num_commands, char *cmd
         // build list of tokens and verify redirection is valid
         tokenizer(sm, &list_tokens, subcommands_arr[i]);
         rc = is_tokens_redirection_valid(&list_tokens);
-        if (!rc) return false;
+        if (rc < 0) return ERROR;
 
 
         // translate token list to subcommand structure
         struct command_t *command = malloc(sizeof(struct command_t));
         rc = tokens_to_command(command, &list_tokens, i, num_commands);
-        if (!rc) return false;
+        if (rc < 0) return ERROR;
         
 
         // verifies stdout and stdin channels are valid
         rc = is_valid_command(command);
-        if (!rc) return false;
+        if (rc < 0) return ERROR;
 
 
         // command is built and valid, add to array of commands
@@ -772,5 +768,5 @@ bool parse_command(struct command_t *commands_arr[], int num_commands, char *cmd
 
     parser_clean_up(sm, subcommands_arr, num_commands);
 
-    return true;
+    return SUCCESS;
 }

@@ -40,22 +40,22 @@
  * 
  * @return status of reset
  */ 
-bool reset_stdin_stdout(int stdin_copy, int stdout_copy) {
+int reset_stdin_stdout(int stdin_copy, int stdout_copy) {
     int rc;
     
     // reset stdin
     rc = dup2(stdin_copy, STDIN_FILENO);
-    if (rc < 0) return false;
+    if (rc < 0) return ERROR;
     
     // reset stdout
     rc = dup2(stdout_copy, STDOUT_FILENO);
-    if (rc < 0) return false;
+    if (rc < 0) return ERROR;
     
     rc = close(stdin_copy);
-    if (rc < 0) return false;
+    if (rc < 0) return ERROR;
 
     rc = close(stdout_copy);
-    if (rc < 0) return false;
+    if (rc < 0) return ERROR;
 
     return true;
 }
@@ -125,13 +125,13 @@ int open_in_file(char *fname) {
  * 
  * @return status of redirection file setup 
  */ 
-bool setup_command_redirection(struct command_t *command) {
+int setup_command_redirection(struct command_t *command) {
     int fid;
 
     // redirection out
     if (command->file_out) {
         fid = create_out_file(command->outfile, command->file_out);
-        if (fid < 0) return false;
+        if (fid < 0) return ERROR;
 
         // output file created/opened for write
         command->fid_out = fid; 
@@ -140,13 +140,13 @@ bool setup_command_redirection(struct command_t *command) {
     // redirection in
     if (command->file_in) {
         fid = open_in_file(command->infile);
-        if (fid < 0) return false;
+        if (fid < 0) return ERROR;
 
         // input file opened for read
         command->fid_in = fid;
     }
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -159,31 +159,31 @@ bool setup_command_redirection(struct command_t *command) {
  * 
  * @return true of false if stdout set properly
  */ 
-bool set_stdout(struct command_t *command, int pipe_out) {
+int set_stdout(struct command_t *command, int pipe_out) {
     int rc;
 
     // writing to file
     if (command->file_out) {
         // close stdout
         rc = close(STDOUT_FILENO);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
 
         // attach fid to stdout
         rc = dup(command->fid_out);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
     } 
     // writing to pipe
     else if (command->pipe_out) {
         // close stdout
         rc = close(STDOUT_FILENO);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
 
         // attach pipe to stdout
         rc = dup2(pipe_out, STDOUT_FILENO);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
     }
     // else keep default
-    return true;
+    return SUCCESS;
 }
 
 
@@ -196,28 +196,28 @@ bool set_stdout(struct command_t *command, int pipe_out) {
  * 
  * @return true of false if stdin set properly
  */ 
-bool set_stdin(struct command_t *command, int pipe_in) {
+int set_stdin(struct command_t *command, int pipe_in) {
     int rc;
     
     // reading from file
     if (command->file_in) {
         rc = close(STDIN_FILENO);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
        
         rc = dup(command->fid_in);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
     } 
     // reading from pipe
     else if (command->pipe_in) {
         // you are not the last command -> stdin from pipes
         rc = close(STDIN_FILENO);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
 
         rc = dup2(pipe_in, STDIN_FILENO);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
     }
     // else keep default
-    return true;
+    return SUCCESS;
 }
 
 
@@ -238,17 +238,17 @@ int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const e
 
     // set stdout and stdin before execution
     rc = set_stdout(command, pipe_out);
-    if (!rc) return false;
+    if (rc < 0) return ERROR;
 
     rc = set_stdin(command, pipe_in);
-    if (!rc) return false;
+    if (rc < 0) return ERROR;
 
     // execute command
     execvpe(command->cmd_name, command->tokens, envp);
 
     // if exec returns, something went wrong
     LOG_ERROR(ERROR_EXEC_FAILED, strerror(errno));
-    exit(-1);
+    exit(ERROR);
 }
 
 
@@ -273,7 +273,7 @@ void do_parent(int pid) {
  * 
  * @return status of command execution
  */ 
-bool fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
+int fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     pid_t pid = fork();
     
     // check fork() return to ensure it is a valid pid, otherwise an error occured
@@ -285,7 +285,7 @@ bool fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *c
         do_parent(pid);
     }
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -300,17 +300,17 @@ bool fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *c
  * 
  * @return status of command execution
  */ 
-bool setup_and_execute_command(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
+int setup_and_execute_command(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
 
     // creates/opens any files to be used for command redirection
     rc = setup_command_redirection(command);
-    if (!rc) return false;
+    if (rc < 0) return ERROR;
 
     rc = fork_and_exec(command, pipe_in, pipe_out, envp);
-    if (!rc) return false;
+    if (rc < 0) return ERROR;
 
-    return true;
+    return SUCCESS;
 }
 
 
@@ -343,15 +343,15 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
     for (i=0; i<num_commands; i++) {
         // create pipe
         rc = pipe(pipes_fd);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
 
         // use struct to setup commands stdout/stdin and execute
         rc = setup_and_execute_command(commands_arr[i], pipe_in, pipes_fd[WRITE_PIPE], envp);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
 
         // close writing end of pipe, the child will write to it's copy
         rc = close(pipes_fd[WRITE_PIPE]);
-        if (rc < 0) return false;
+        if (rc < 0) return ERROR;
 
         // becomes the read end of the next command
         pipe_in = pipes_fd[READ_PIPE];
@@ -359,7 +359,7 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
 
     // reset stdin and stdout to default
     rc = reset_stdin_stdout(stdin_copy, stdout_copy);
-    if (rc < 0) return false;
+    if (rc < 0) return ERROR;
 
-    return true;
+    return SUCCESS;
 }
