@@ -5,7 +5,6 @@
  * @brief: Header file for functions needed by the shell to use the execution unit
  */ 
 #include <stddef.h>
-#include <stdbool.h>
 
 #include "cmdline.h"
 

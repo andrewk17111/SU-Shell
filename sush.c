@@ -87,6 +87,7 @@ int main(int argc, char *argv[], char *envp[]) {
             // if exit command, wait for return and end loop
             if (strcmp(cmdline, "exit\n") == 0) {
                 rc = do_command(cmdline);
+                // exit command success, break loop and exit shell
                 if (rc) break;
             }
 
