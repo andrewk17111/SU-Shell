@@ -87,7 +87,7 @@ void environ_init(char **envp) {
         var->value = environ_var_val[1];
         // Add the new environment variable to the
         // internal environment list.
-        list_add_tail(&var->list, &environment);
+        list_add(&var->list, &environment);
         // Free the name and value string array.
         free(environ_var_val);
     }

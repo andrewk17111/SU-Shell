@@ -31,31 +31,47 @@
  * to read and execute commands, the function executes each command
  */ 
 void run_startup_commands() {
-    char *sushhome = environ_get_var("SUSHHOME")->value;
-    char *filename = malloc(strlen(sushhome) + 9);
-    strcpy(filename, sushhome);
-    strcat(filename, "/.sushrc");
+    if (environ_var_exist("SUSHHOME")) {
+        char *sushhome = environ_get_var("SUSHHOME")->value;
+        char *filename = malloc(strlen(sushhome) + 9);
+        strcpy(filename, sushhome);
+        strcat(filename, "/.sushrc");
 
-    // get file permissions
-    struct stat sfile;
-    stat(filename, &sfile);
+        // get file permissions
+        struct stat sfile;
+        stat(filename, &sfile);
 
-    // if user can read and execute
-    if ((sfile.st_mode & S_IRUSR) && (sfile.st_mode & S_IXUSR)) {
-        FILE *fp = fopen(filename, "r");
+        // if user can read and execute
+        if ((sfile.st_mode & S_IRUSR) && (sfile.st_mode & S_IXUSR)) {
+            FILE *fp = fopen(filename, "r");
 
-        // read and execute each line
-        char cmdline[CMD_BUFFER];
-        while (fgets(cmdline, CMD_BUFFER, fp)) {
-            // if command was read, execute
-            if (cmdline != NULL && cmdline[0] != '\n' && cmdline[0] != '\0') {
-                int rc = do_command(cmdline);
+            // read and execute each line
+            char cmdline[CMD_BUFFER];
+            while (fgets(cmdline, CMD_BUFFER, fp)) {
+                // if command was read, execute
+                if (cmdline != NULL && cmdline[0] != '\n' && cmdline[0] != '\0') {
+                    int rc = do_command(cmdline);
+                }
             }
-        }
 
-        //close file
-        fclose(fp);
+            //close file
+            fclose(fp);
+        }
     }
+}
+
+/**
+ * Get's the value to be used for the command prompt.
+ */
+char * get_prompt() {
+    char *prompt = ">";
+
+    // get PS1 if exists
+    if (environ_var_exist("PS1")) {
+        prompt = strdup(environ_get_var("PS1")->value);
+    }
+
+    return prompt;
 }
 
 /**
@@ -72,13 +88,14 @@ int main(int argc, char *argv[], char *envp[]) {
     // Run startup commands
     run_startup_commands();
 
-    // Prompt user and execute commands
+    // string to hold command line input
     char cmdline[CMD_BUFFER];
 
     // print prompt
-    printf("%s", environ_get_var("PS1")->value);
+    printf("%s", get_prompt());
     fflush(stdout);
 
+    // prompt user until exit
     while (fgets(cmdline, CMD_BUFFER, stdin) != NULL) {
         // not empty command lines, execute
         if (cmdline[0] != '\n') {
@@ -90,7 +107,7 @@ int main(int argc, char *argv[], char *envp[]) {
         }
 
         // print prompt again
-        printf("%s", environ_get_var("PS1")->value);
+        printf("%s", get_prompt());
         fflush(stdout);
     }
 
