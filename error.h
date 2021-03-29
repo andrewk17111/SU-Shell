@@ -5,12 +5,12 @@
 // macro to show errors in stderr
 #define LOG_ERROR(...) { \
     fprintf(stderr, __VA_ARGS__); \
-    return -1; }
+    }
 
 // macro to show messages in stdout
 #define LOG_MSG(...) { \
     printf(__VA_ARGS__); \
-    return -1; }
+    }
 
 
 // errors for command queue

@@ -4,25 +4,30 @@
  * 
  * @brief: Executes an array of commands
  * 
- * Driver function is called by runner.c which provides an array of non-internal commands
- * to execute. This execution unit handles all redirection of commands as well as piping
- * between contiguous commands.
+ * Execution unit of the shell to execute all non-internal commands. Takes an array of commands
+ * and handles pipelining of stdin and stdout channels if necessary. Additional error checking
+ * is present to ensure that any channel is only redirected once (i.e. cannot redirect out to file
+ * and also write to a pipe) - this is checked elsewhere in the shell but done again here prior
+ * to execution of any command.
  */ 
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include "cmdline.h"
-#include "error.h"
-#include "executor.h"
-#include "environ.h"
-
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
+#include "cmdline.h"
+#include "executor.h"
+#include "environ.h"
+#include "error.h"
+
+// constants for pipe code readability
+#define READ_PIPE 0
+#define WRITE_PIPE 1
 
 /**
  * Resets stdin and stdout after command(s) execution to ensure
@@ -233,10 +238,11 @@ int set_stdin(struct command_t *command, int pipe_in) {
 int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
 
+    // set stdout and stdin before execution
     rc = set_stdout(command, pipe_out);
     if (rc < 0) return RETURN_ERROR;
 
-    rc = set_stdin(command, pipe_out);
+    rc = set_stdin(command, pipe_in);
     if (rc < 0) return RETURN_ERROR;
 
     // execute command
@@ -244,8 +250,7 @@ int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const e
 
     // if exec returns, something went wrong
     LOG_ERROR(ERROR_EXEC_FAILED, strerror(errno));
-
-    return RETURN_ERROR;
+    exit(RETURN_ERROR);
 }
 
 
@@ -257,6 +262,7 @@ int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const e
 void do_parent(int pid) {
     int status;
     waitpid(pid, &status, 0);
+    //printf("Child %d Exited: %d\n", pid, status);
 }
 
 
@@ -297,17 +303,14 @@ int fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *co
  * 
  * @return status of command execution
  */ 
-int setup_and_execute_command(struct command_t *command, int pipes_fd[2], int pipe_in, char *const envp[]) {
+int setup_and_execute_command(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
 
     // creates/opens any files to be used for command redirection
     rc = setup_command_redirection(command);
     if (rc < 0) return RETURN_ERROR;
 
-    rc = pipe(pipes_fd);
-    if (rc < 0) return RETURN_ERROR;
-
-    rc = fork_and_exec(command, pipe_in, pipes_fd[1], envp);
+    rc = fork_and_exec(command, pipe_in, pipe_out, envp);
     if (rc < 0) return RETURN_ERROR;
 
     return RETURN_SUCCESS;
@@ -315,8 +318,8 @@ int setup_and_execute_command(struct command_t *command, int pipes_fd[2], int pi
 
 
 /**
- * Driver function which executes an array of commands using the information stored in each command stuct to determine
- * the behavior of each commands execution.
+ * Driver function which executes an array of commands using the information stored in each command 
+ * stuct to determine the behavior of each commands execution.
  * 
  * @param commands_arr: array of command structs to execute
  * @param num_commands: the number of commands to execute
@@ -329,40 +332,33 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
     int stdin_copy = dup(STDIN_FILENO);
     int stdout_copy = dup(STDOUT_FILENO);
 
+    // build evnp for commands execution
     char **envp = make_environ();
     
-    int i=0; // starting index of command in array of commands
-    int rc;
+    int i, rc;
     pid_t pid;
 
     // create pipes
     int pipes_fd[ 2 ];
     int pipe_in = 0;
 
-    // fork and execute each command except last (or first if only 1 command is given)
-    for (i=0; i<num_commands-1; ++i) {
-        // use struct to setup execution behavior and execute command
-        rc = setup_and_execute_command(commands_arr[i], pipes_fd, pipe_in, envp);
+    // fork and execute each command
+    for (i=0; i<num_commands; ++i) {
+        // create pipe
+        rc = pipe(pipes_fd);
+        if (rc < 0) return RETURN_ERROR;
+
+        // use struct to setup commands stdout/stdin and execute
+        rc = setup_and_execute_command(commands_arr[i], pipe_in, pipes_fd[WRITE_PIPE], envp);
         if (rc < 0) return RETURN_ERROR;
 
         // close writing end of pipe, the child will write to it's copy
-        rc = close(pipes_fd[1]);
+        rc = close(pipes_fd[WRITE_PIPE]);
         if (rc < 0) return RETURN_ERROR;
 
         // becomes the read end of the next command
-        pipe_in = pipes_fd[0];
+        pipe_in = pipes_fd[READ_PIPE];
     }
-
-
-    // if pipe_in is no longer 0, previous command is piping into the last command to execute
-    if (pipe_in != 0) {
-        rc = dup2(pipe_in, STDIN_FILENO);
-        if (rc < 0) return RETURN_ERROR;
-    }
-
-    // setup and execute remaining (or single) command
-    rc = setup_and_execute_command(commands_arr[i], pipes_fd, pipe_in, envp);
-    if (rc < 0) return RETURN_ERROR;
 
     // reset stdin and stdout to default
     rc = reset_stdin_stdout(stdin_copy, stdout_copy);
