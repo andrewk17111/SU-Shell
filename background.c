@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "list.h"
 #include "cmdline.h"
 #include "internal.h"
 #include "executor.h"
@@ -19,8 +20,24 @@
 #define CMD_BUFFER 512 
 
 int is_forked = false;
+
+int job_count = 0;
+int command_running = false;
+
 int pipes_fd[2];
-LIST_HEAD(queue);
+
+LIST_HEAD(queue_list);
+LIST_HEAD(completed_list);
+
+
+struct queue_item_t {
+    int job_id;
+    char *outfile;
+    bool *is_complete;
+
+    struct command_t **commands_arr;
+    struct list_head list;
+};
 
 
 bool is_valid_background_command(struct command_t *command) {
@@ -54,28 +71,41 @@ int set_command_channels(struct command_t *command) {
 }
 
 
-int parse_execute_background_command(char *background_cmd) {
-    // parser returns array of commands, initialize array to hold 1
-    struct command_t **command_arr = malloc(sizeof(struct command_t) * 1);
-    
-    int rc = parse_command(command_arr, 1, background_cmd);
-    if (rc < 0) return ERROR;
+void run_next_command(struct list_head *queue_head) {
 
-    if (is_valid_background_command(command_arr[0])) {
+    if (!command_running && !list_empty(queue_head)) {
 
-        // set commands stdin to null and stdout to a temp file
-        rc = set_command_channels(command_arr[0]);
-        if (rc < 0) return ERROR;
+        command_running = true;
 
-        if (is_internal_command(command_arr[0])) {
-            execute_internal_command(command_arr[0]);
+        // dequeue next command
+        struct queue_item_t *queue_item = list_entry(queue_head->next, struct queue_item_t, list); 
+
+        // get commands array
+        struct command_t **commands_arr = queue_item->commands_arr;
+        if (is_internal_command(commands_arr[0])) {
+            execute_internal_command(commands_arr[0]);
         } else {
-            rc = execute_external_command(command_arr, 1);
+            execute_external_command(commands_arr, 1);
         }
 
-        // remove temp file
-        remove(command_arr[0]->outfile);
+        
+        struct list_head *completed_job = queue_head->next;
+        list_del(completed_job);
+        list_add_tail(completed_job, &completed_list);
+
+        command_running = false;
     }
+}
+
+
+void add_to_queue(struct command_t *commands_arr[]) {
+    struct queue_item_t *queue_item = malloc(sizeof(struct queue_item_t));
+
+    queue_item->job_id = job_count++;
+    queue_item->is_complete = false;
+    queue_item->outfile = commands_arr[0]->outfile;
+    queue_item->commands_arr = commands_arr;
+    list_add_tail(&queue_item->list, &queue_list);
 }
 
 
@@ -90,6 +120,28 @@ char * remove_first_token(char *cmdline) {
 }
 
 
+int parse_and_queue_command(char *cmdline) {
+    // remove first token which is the internal command specifying cmdline is background
+    char *background_cmd = remove_first_token(cmdline);
+
+    // parser returns array of commands, initialize array to hold 1
+    struct command_t **command_arr = malloc(sizeof(struct command_t) * 1);
+    
+    int rc = parse_command(command_arr, 1, background_cmd);
+    if (rc < 0) return ERROR;
+
+    if (is_valid_background_command(command_arr[0])) {
+
+        // set commands stdin to null and stdout to a temp file
+        rc = set_command_channels(command_arr[0]);
+        if (rc < 0) return ERROR;
+
+        // add command to queue
+        add_to_queue(command_arr);
+    }
+}
+
+
 void wait_commands(int pipe_read) {
     // pipes read end becomes stdin
     close(STDIN_FILENO);
@@ -97,12 +149,12 @@ void wait_commands(int pipe_read) {
 
     char cmdline[CMD_BUFFER];
     while (true) {
-        fgets(cmdline, CMD_BUFFER, stdin);
+        
+        if (fgets(cmdline, CMD_BUFFER, stdin) != NULL) {
+            int rc = parse_and_queue_command(cmdline);
+        }
 
-        // remove first token which is the internal command specifying cmdline is background
-        char *background_cmd = remove_first_token(cmdline);
-
-        int rc = parse_execute_background_command(background_cmd);
+        run_next_command(&queue_list);
     }
 }
 
