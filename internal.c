@@ -43,6 +43,7 @@ int handle_setenv(struct command_t *cmd) {
     } else {
         // Print error if there aren't two args.
         LOG_ERROR(ERROR_SETENV_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -68,10 +69,12 @@ int handle_getenv(struct command_t *cmd) {
         } else {
             // Print an error if the variable doesn't exist
             LOG_ERROR(ERROR_GETENV_INVALID, cmd->tokens[1]);
+            return ERROR;
         }
     } else {
         // Print an error if there are two or more arguments
         LOG_ERROR(ERROR_GETENV_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -90,6 +93,7 @@ int handle_unsetenv(struct command_t *cmd) {
     } else {
         // Print error if there isn't one arg.
         LOG_ERROR(ERROR_UNSETENV_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -108,6 +112,7 @@ int handle_cd(struct command_t *cmd) {
         } else {
             // Print error if HOME doesn't exist.
             LOG_ERROR(ERROR_CD_NOHOME);
+            return ERROR;
         }
     // If there is one arg,
     // chdir to the new directory.
@@ -119,6 +124,7 @@ int handle_cd(struct command_t *cmd) {
     } else {
         // Print error if there are two or more args.
         LOG_ERROR(ERROR_CD_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -140,6 +146,7 @@ int handle_pwd(struct command_t *cmd) {
     } else {
         // Print error if there is one or more args
         LOG_ERROR(ERROR_PWD_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -190,18 +197,54 @@ int handle_queue(struct command_t *cmd) {
  * @param cmd - The command for arguments
  */
 int handle_status(struct command_t *cmd) {
-    print_all_job_status();
+    // If there aren't any args,
+    // print the statuses of the jobs.
+    if (cmd->num_tokens - ARGC_OFFSET == 0) {
+        print_all_job_status();
+    } else {
+        // Print error if there is one or more args
+        LOG_ERROR(ERROR_STATUS_ARG);
+        return ERROR;
+    }
     return SUCCESS;
 }
 
+/**
+ * Handles the output internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int handle_output(struct command_t *cmd) {
-    int job_id = atoi(cmd->tokens[1]);
-    print_job_output(job_id);
+    // If there is one arg,
+    // print the output of the requested job.
+    if (cmd->num_tokens - ARGC_OFFSET == 1) {
+        int job_id = atoi(cmd->tokens[1]);
+        print_job_output(job_id);
+    } else {
+        // Print error if there is one or more args
+        LOG_ERROR(ERROR_OUTPUT_ARG);
+        return ERROR;
+    }
+    return SUCCESS;
 }
 
+/**
+ * Handles the cancel internal command
+ * 
+ * @param cmd - The command for arguments
+ */
 int handle_cancel(struct command_t *cmd) {
-    int job_id = atoi(cmd->tokens[1]);
-    print_job_output(job_id);
+    // If there is one arg,
+    // remove the job from the queue.
+    if (cmd->num_tokens - ARGC_OFFSET == 1) {
+        int job_id = atoi(cmd->tokens[1]);
+        print_job_output(job_id);
+    } else {
+        // Print error if there is one or more args
+        LOG_ERROR(ERROR_CANCEL_ARG);
+        return ERROR;
+    }
+    return SUCCESS;
 }
 
 
