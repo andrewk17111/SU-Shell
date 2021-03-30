@@ -17,14 +17,36 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <stdbool.h>
+#include <signal.h>
 #include <sys/stat.h>
 
 #include "cmdline.h"
 #include "error.h"
 #include "environ.h"
+#include "background.h"
 
 // max size of command line input we accept
 #define CMD_BUFFER 512 
+
+// typedef for the call back function pointer for signal handler
+typedef void (*signal_handler_t)(int);
+
+
+/**
+ * Function to register a callback function to handle given signal
+ * 
+ * @param callback: function that we register to handle the signal
+ * @param sig_id: signal that the callback function will handle
+ * 
+ * @return: integer T/F if registration was successful
+ **/ 
+int register_handler(signal_handler_t callback, int sig_id) {
+    if (signal(sig_id, callback) == SIG_ERR) {
+        return ERROR;
+    }
+    return SUCCESS;
+}
+
 
 /**
  * If user defined startup command in the .sushrc file and has permission
@@ -81,6 +103,9 @@ char * get_prompt() {
  */ 
 int main(int argc, char *argv[], char *envp[]) {
     int rc;
+
+    // register callback for child death signal, exit on failure
+    if (!register_handler(sigchild_handler, SIGCHLD)) return -1;
 
     // Environment Setup
     environ_init(envp);

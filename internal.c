@@ -15,10 +15,12 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 #include "cmdline.h"
 #include "internal.h"
 #include "error.h"
 #include "environ.h"
+#include "background.h"
 
 #define ARGC_OFFSET 2
 
@@ -159,6 +161,51 @@ int handle_exit(struct command_t *cmd) {
 }
 
 /**
+ * Handles the queue internal command
+ * 
+ * @param cmd - The command for arguments
+ */
+int handle_queue(struct command_t *cmd) {
+    int rc;
+    if (is_valid_background_command(cmd)) {
+
+        // remove first token which is the internal command `queue`
+        for(int i=1; i<cmd->num_tokens; i++)
+            cmd->tokens[i-1] = cmd->tokens[i];
+
+        cmd->num_tokens = cmd->num_tokens-1;
+        cmd->cmd_name = cmd->tokens[0];
+
+        // set background commands stdin and stdout
+        rc = set_command_channels(cmd);
+        if (rc < 0) return ERROR;
+
+        add_to_queue(cmd);
+    }
+}
+
+/**
+ * Handles the status internal command
+ * 
+ * @param cmd - The command for arguments
+ */
+int handle_status(struct command_t *cmd) {
+    print_all_job_status();
+    return SUCCESS;
+}
+
+int handle_output(struct command_t *cmd) {
+    int job_id = atoi(cmd->tokens[1]);
+    print_job_output(job_id);
+}
+
+int handle_cancel(struct command_t *cmd) {
+    int job_id = atoi(cmd->tokens[1]);
+    print_job_output(job_id);
+}
+
+
+/**
  * The array of available internal commands.
  */
 struct internal_command_t internal_cmds[] = {
@@ -168,6 +215,10 @@ struct internal_command_t internal_cmds[] = {
     { .name = "cd", .handler = handle_cd },
     { .name = "pwd", .handler = handle_pwd },
     { .name = "exit", .handler = handle_exit },
+    { .name = "queue", .handler = handle_queue },
+    { .name = "status", .handler = handle_status },
+    { .name = "output", .handler = handle_output },
+    { .name = "cancel", .handler = handle_cancel },
     NULL
 };
 

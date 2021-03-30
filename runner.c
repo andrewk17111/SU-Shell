@@ -11,37 +11,32 @@
 #include "background.h"
 
 
-void print_commands(struct command_t *commands[], int num_cmds) {
-    struct command_t *command;
-
-    for (int i=0; i<num_cmds; i++) {
-        command = commands[i];    
-        printf("*********************************\n");
-        // ->num_tokens
-        printf("    num_tokens -> %d\n", command->num_tokens);
-        printf("    cmd_name -> %s\n", command->cmd_name);
-        
-        // ->tokens
-        printf("    tokens -> ");
-        for (int i = 0; i < command->num_tokens; i++) {
-            printf("[%s] ", command->tokens[i]);
-        }
-        printf("\n");
-
-        // ->file_in
-        printf("    file_in -> %d\n", command->file_in);
-        printf("    infile -> %s\n", command->infile);
-
-        // ->file_out
-        printf("    file_out -> %d\n", command->file_out);
-        printf("    outfile -> %s\n", command->outfile);
-
-        // ->pipe_in and pipe_out
-        printf("    pipe_in -> %d\n", command->pipe_in);
-        printf("    pipe_out -> %d\n", command->pipe_out);
-
-        printf("*********************************\n");
+void print_commands(struct command_t *command) {
+    printf("*********************************\n");
+    // ->num_tokens
+    printf("    num_tokens -> %d\n", command->num_tokens);
+    printf("    cmd_name -> %s\n", command->cmd_name);
+    
+    // ->tokens
+    printf("    tokens -> ");
+    for (int i = 0; i < command->num_tokens; i++) {
+        printf("[%s] ", command->tokens[i]);
     }
+    printf("\n");
+
+    // ->file_in
+    printf("    file_in -> %d\n", command->file_in);
+    printf("    infile -> %s\n", command->infile);
+
+    // ->file_out
+    printf("    file_out -> %d\n", command->file_out);
+    printf("    outfile -> %s\n", command->outfile);
+
+    // ->pipe_in and pipe_out
+    printf("    pipe_in -> %d\n", command->pipe_in);
+    printf("    pipe_out -> %d\n", command->pipe_out);
+
+    printf("*********************************\n");
 }
 
 
@@ -109,28 +104,23 @@ int do_command(char *cmdline) {
     int num_commands = get_num_subcommands(cmdline);
     struct command_t **commands_arr = malloc(sizeof(struct command_t *) * num_commands);
 
-    if (is_background_command(cmdline)) {
-        background_command_handler(cmdline);
+    // parse commands to populate array of command structs
+    rc = parse_command(commands_arr, num_commands, cmdline);
+    if (rc < 0) {
+        LOG_ERROR(ERROR_INVALID_CMDLINE);
+        return rc;
     }
 
-    else {
-        // parse commands to populate array of command structs
-        rc = parse_command(commands_arr, num_commands, cmdline);
-        if (rc < 0) {
-            LOG_ERROR(ERROR_INVALID_CMDLINE);
-            return rc;
-        }
+    // print_commands(commands_arr, num_commands);
 
-        // print_commands(commands_arr, num_commands);
-
-        if (is_internal_command(commands_arr[0])) {
-            rc = execute_internal_command(commands_arr[0]);
-        } else {
-            rc = execute_external_command(commands_arr, num_commands);
-        }
-        
-        // release all memory allocated to hold commands
-        runner_clean_up(commands_arr, num_commands);
+    if (is_internal_command(commands_arr[0])) {
+        rc = execute_internal_command(commands_arr[0]);
+    } else {
+        rc = execute_external_command(commands_arr, num_commands);
     }
+    
+    // release all memory allocated to hold commands
+    // runner_clean_up(commands_arr, num_commands);
+
     return rc;
 }
