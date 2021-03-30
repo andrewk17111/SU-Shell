@@ -170,7 +170,7 @@ void print_job_output(int job_id) {
 }
 
 
-void cancel_job(int job_id) {
+void remove_from_queue(int job_id) {
     struct list_head *head = &queue_list;
     struct list_head *curr;
     struct queue_item_t *queue_item;
@@ -179,7 +179,10 @@ void cancel_job(int job_id) {
         queue_item = list_entry(curr, struct queue_item_t, list);
 
         if (job_id == queue_item->job_id) {
+            struct list_head *next = curr->next;
             list_del(curr);
+            free(queue_item);
+            return; 
         }
     }
 }

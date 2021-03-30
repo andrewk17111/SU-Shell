@@ -18,7 +18,7 @@ run: sush
 	./sush
 
 valgrind: sush
-	valgrind --leak-check=full ./sushell
+	valgrind --leak-check=full ./sush
 
 clean:
 	rm sush *.o

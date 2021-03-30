@@ -220,6 +220,7 @@ int handle_output(struct command_t *cmd) {
     if (cmd->num_tokens - ARGC_OFFSET == 1) {
         int job_id = atoi(cmd->tokens[1]);
         print_job_output(job_id);
+        remove_from_queue(job_id);
     } else {
         // Print error if there is one or more args
         LOG_ERROR(ERROR_OUTPUT_ARG);
@@ -238,7 +239,7 @@ int handle_cancel(struct command_t *cmd) {
     // remove the job from the queue.
     if (cmd->num_tokens - ARGC_OFFSET == 1) {
         int job_id = atoi(cmd->tokens[1]);
-        print_job_output(job_id);
+        remove_from_queue(job_id);
     } else {
         // Print error if there is one or more args
         LOG_ERROR(ERROR_CANCEL_ARG);
