@@ -113,8 +113,10 @@ void print_all_job_status() {
     for (curr = head->next; curr != head; curr = curr->next) {
         queue_item = list_entry(curr, struct queue_item_t, list);
 
-        char *status = (queue_item->is_complete) ? "complete" : "queued";
-        printf("%d is %s\n", queue_item->job_id, status);
+        if (queue_item->is_complete)
+            printf("%d is complete\n", queue_item->job_id);
+        else if (queue_item->pid == 0)
+            printf("%d - is queued\n", queue_item->job_id);
     }
 }
 
@@ -127,7 +129,6 @@ void print_all_job_status() {
  **/ 
 void sigchild_handler(int signal) {
     pid_t pid;
-
     struct list_head *head = &queue_list;
     struct list_head *curr;
     struct queue_item_t *queue_item;
@@ -137,9 +138,7 @@ void sigchild_handler(int signal) {
         pid_t job_pid = queue_item->pid;
 
         while ((pid = waitpid(job_pid, NULL, WNOHANG)) > 0) {
-            job_running = false;
             queue_item->is_complete = true;
-
             dequeue_and_execute();
         }
     }
