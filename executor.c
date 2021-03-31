@@ -37,7 +37,6 @@
  * 
  * @param stdin_copy: default stdin 
  * @param stdout_copy: default stdout 
- * 
  * @return status of reset
  */ 
 int reset_stdin_stdout(int stdin_copy, int stdout_copy) {
@@ -62,15 +61,14 @@ int reset_stdin_stdout(int stdin_copy, int stdout_copy) {
 
 
 /**
- * Creates file for redirection out. Takes the name of the file and the type
+ * Creates/opens file for redirection out. Takes the name of the file and the type
  * of redirection to be done (overwrite or append). If overwriting, the file is
  * created if it does not exist or truncates the existing file. If appending, the file 
  * is created if it does not exist, or opens it for appending.
  * 
  * @param fname: name of the file
  * @param redir_type: type of redirection out to be done 
- * 
- * @return file id if file was opened successfully
+ * @return fid will be positive if opened/created successully, otherwise negative
  */ 
 int create_out_file(char *fname, enum redirect_type_e redir_type) {
     int fid;
@@ -102,8 +100,7 @@ int create_out_file(char *fname, enum redirect_type_e redir_type) {
  * 
  * @param fname: name of the file
  * @param redir_type: type of redirection out to be done 
- * 
- * @return file id if file was opened successfully
+ * @return fid will be positive if opened successully, otherwise negative
  */ 
 int open_in_file(char *fname) {
     int fid = open(fname, O_RDONLY, 0777);
@@ -122,7 +119,6 @@ int open_in_file(char *fname) {
  * for any redirection that is defined.
  * 
  * @param command: command to check for any redirection
- * 
  * @return status of redirection file setup 
  */ 
 int setup_command_redirection(struct command_t *command) {
@@ -156,8 +152,7 @@ int setup_command_redirection(struct command_t *command) {
  * 
  * @param command: command struct holding information about commands execution config
  * @param pipe_out: write side of the pipe used if given command preceeds another
- * 
- * @return true of false if stdout set properly
+ * @return status of attempting to set stdout channels 
  */ 
 int set_stdout(struct command_t *command, int pipe_out) {
     int rc;
@@ -193,8 +188,7 @@ int set_stdout(struct command_t *command, int pipe_out) {
  * 
  * @param command: command struct holding information about commands execution config
  * @param pipe_in: read side of the pipe used if given command proceeds another
- * 
- * @return true of false if stdin set properly
+ * @return status of attempting to set stdin channels 
  */ 
 int set_stdin(struct command_t *command, int pipe_in) {
     int rc;
@@ -230,16 +224,16 @@ int set_stdin(struct command_t *command, int pipe_in) {
  * @param pipe_in: read side of the pipe used if given command proceeds another
  * @param pipe_out: write side of the pipe used if given command preceeds another
  * @param envp: environement for command execution
- * 
  * @return will only return if exec fails
  **/ 
 int do_child(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
 
-    // set stdout and stdin before execution
+    // set stdout channel
     rc = set_stdout(command, pipe_out);
     if (rc < 0) return ERROR;
 
+    // set stdin channel
     rc = set_stdin(command, pipe_in);
     if (rc < 0) return ERROR;
 
@@ -270,7 +264,6 @@ void do_parent(int pid) {
  * @param pipe_in: read side of the pipe used if given command proceeds another
  * @param pipe_out: write side of the pipe used if given command preceeds another
  * @param envp: environement for command execution
- * 
  * @return status of command execution
  */ 
 int fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
@@ -279,9 +272,13 @@ int fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *co
     // check fork() return to ensure it is a valid pid, otherwise an error occured
     if (pid < 0) {
         return false;
-    } else if (pid == 0) {
+    } 
+    // child executes command
+    else if (pid == 0) {
         do_child(command, pipe_in, pipe_out, envp);
-    } else {
+    } 
+    // parent waits for child to finish
+    else {
         do_parent(pid);
     }
 
@@ -290,15 +287,14 @@ int fork_and_exec(struct command_t *command, int pipe_in, int pipe_out, char *co
 
 
 /**
- * Each command uses this function to first setup all redirection files, create pipes, forks and
+ * Each command uses this function to first setup all redirection files, forks and
  * executes the command given.
  * 
  * @param command: command struct holding information about commands execution config
  * @param pipe_in: read side of the pipe used if given command proceeds another
  * @param pipe_out: write side of the pipe used if given command preceeds another
  * @param envp: environement for command execution
- * 
- * @return status of command execution
+ * @return status of setup and command execution
  */ 
 int setup_and_execute_command(struct command_t *command, int pipe_in, int pipe_out, char *const envp[]) {
     int rc;
@@ -315,12 +311,17 @@ int setup_and_execute_command(struct command_t *command, int pipe_in, int pipe_o
 
 
 /**
- * Driver function which executes an array of commands using the information stored in each command 
- * stuct to determine the behavior of each commands execution.
+ * Driver function which executes an array of commands using the information stored in 
+ * each command stuct to determine the behavior of each commands execution. During each
+ * commands setup, all return codes are error checked and execution will terminate if
+ * any errors are encountered.
+ * 
+ * The function expects an array of command_t structs (defined in runner.h) and the number
+ * of commands being executed. Consecutive commmands are pipelined together and each command
+ * structure should hold values that reflect the pipelining behavior.
  * 
  * @param commands_arr: array of command structs to execute
  * @param num_commands: the number of commands to execute
- * 
  * @return status of all setup tasks and all commands execution
  */ 
 int execute_external_command(struct command_t *commands_arr[], int num_commands) {
@@ -345,15 +346,16 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
         rc = pipe(pipes_fd);
         if (rc < 0) return ERROR;
 
-        // use struct to setup commands stdout/stdin and execute
+        // use command struct to setup commands stdout/stdin and execute
         rc = setup_and_execute_command(commands_arr[i], pipe_in, pipes_fd[WRITE_PIPE], envp);
         if (rc < 0) return ERROR;
 
-        // close writing end of pipe, the child will write to it's copy
+        // close writing end of pipe, the child will write to it if pipeing out is specified
         rc = close(pipes_fd[WRITE_PIPE]);
         if (rc < 0) return ERROR;
 
-        // becomes the read end of the next command
+        // store the read end of the previous commands pipe. If another command follows
+        // this becomes stdin of the next command
         pipe_in = pipes_fd[READ_PIPE];
     }
 

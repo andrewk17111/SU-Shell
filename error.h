@@ -4,8 +4,9 @@
  * @author: Andrew Kress
  * @author: Dr Briggs
  * 
- * @brief: Header file for all error handling for the shell. Defines constants
- * for each error message as well as a macro to print messages and errors.
+ * @brief: Header file for all error and message handling for the shell. 
+ * 
+ * Defines constants for each error message as well as a macro to print messages and errors.
  */ 
 #ifndef MSGS_H
 #define MSGS_H
@@ -16,21 +17,28 @@
     fprintf(stderr, __VA_ARGS__); \
     }
 
+
 // macro to show messages in stdout
 #define LOG_MSG(...) { \
     printf(__VA_ARGS__); \
     }
 
 
-// errors for command queue
+// errors for environment variables
 #define ERROR_SETENV_ARG "Error - setenv takes two arguments\n"
 #define ERROR_UNSETENV_ARG "Error - unsetenv takes one argument\n"
 #define ERROR_GETENV_ARG "Error - getenv takes 0 or 1 arguments\n"
+#define ERROR_GETENV_INVALID "Error - getenv unknown variable %s\n"                 // variable name
+
+
+// errors for internal commands
 #define ERROR_CD_ARG "Error - cd takes one argument\n"
 #define ERROR_CD_NOHOME "Error - cd no home directory\n"
 #define ERROR_PWD_ARG "Error - pwd takes no arguments\n"
 #define ERROR_EXIT_ARG "Rrror - exit takes no arguments\n"
-#define ERROR_GETENV_INVALID "Error - getenv unknown variable %s\n"                 // variable name
+
+
+// errors for command queue and background execution
 #define ERROR_QUEUE_ARG  "Error - queue requires at least two arguments\n"
 #define ERROR_OUTPUT_ARG "Error - output takes one argument\n"
 #define ERROR_OUTPUT_QUEUED   "Error - task %d is still queued."                    // task # 0, 1, ...
@@ -40,7 +48,7 @@
 #define ERROR_CANCEL_DONE "%d is already finished, use output %d to show results\n" // task #, task #
 
 
-// messages for command queue
+// errors for command queue and background execution
 #define MSG_STATUS_QUEUED "%d - is queued\n"                                        // task #
 #define MSG_STATUS_RUNNING "%d is running as pid %d\n"                              // task #
 #define MSG_STATUS_COMPLETE "%d is complete\n"                                      // task #
