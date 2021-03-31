@@ -73,4 +73,6 @@ int do_command(char *cmdline);
  **/ 
 int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdline);
 
+void print_commands(struct command_t *command);
+
 #endif

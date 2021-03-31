@@ -15,10 +15,12 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 #include "cmdline.h"
 #include "internal.h"
 #include "error.h"
 #include "environ.h"
+#include "background.h"
 
 #define ARGC_OFFSET 2
 
@@ -41,6 +43,7 @@ int handle_setenv(struct command_t *cmd) {
     } else {
         // Print error if there aren't two args.
         LOG_ERROR(ERROR_SETENV_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -66,10 +69,12 @@ int handle_getenv(struct command_t *cmd) {
         } else {
             // Print an error if the variable doesn't exist
             LOG_ERROR(ERROR_GETENV_INVALID, cmd->tokens[1]);
+            return ERROR;
         }
     } else {
         // Print an error if there are two or more arguments
         LOG_ERROR(ERROR_GETENV_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -88,6 +93,7 @@ int handle_unsetenv(struct command_t *cmd) {
     } else {
         // Print error if there isn't one arg.
         LOG_ERROR(ERROR_UNSETENV_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -106,6 +112,7 @@ int handle_cd(struct command_t *cmd) {
         } else {
             // Print error if HOME doesn't exist.
             LOG_ERROR(ERROR_CD_NOHOME);
+            return ERROR;
         }
     // If there is one arg,
     // chdir to the new directory.
@@ -117,6 +124,7 @@ int handle_cd(struct command_t *cmd) {
     } else {
         // Print error if there are two or more args.
         LOG_ERROR(ERROR_CD_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -138,6 +146,7 @@ int handle_pwd(struct command_t *cmd) {
     } else {
         // Print error if there is one or more args
         LOG_ERROR(ERROR_PWD_ARG);
+        return ERROR;
     }
     return SUCCESS;
 }
@@ -159,6 +168,99 @@ int handle_exit(struct command_t *cmd) {
 }
 
 /**
+ * Handles the queue internal command
+ * 
+ * @param cmd - The command for arguments
+ */
+int handle_queue(struct command_t *cmd) {
+    int rc;
+
+    if (cmd->num_tokens - ARGC_OFFSET > 1) {
+
+        // checks that stdin and stdout are not being changed
+        if (is_valid_background_command(cmd)) {
+            // remove first token which is the internal command `queue`
+            for(int i=1; i<cmd->num_tokens; i++)
+                cmd->tokens[i-1] = cmd->tokens[i];
+
+            cmd->num_tokens = cmd->num_tokens-1;
+            cmd->cmd_name = cmd->tokens[0];
+
+            // set background commands stdin and stdout
+            rc = set_command_channels(cmd);
+            if (rc < 0) return ERROR;
+
+            add_to_queue(cmd);
+        } 
+    } else {
+        LOG_ERROR(ERROR_QUEUE_ARG);
+        return ERROR;
+    }
+}
+
+/**
+ * Handles the status internal command
+ * 
+ * @param cmd - The command for arguments
+ */
+int handle_status(struct command_t *cmd) {
+    // If there aren't any args,
+    // print the statuses of the jobs.
+    if (cmd->num_tokens - ARGC_OFFSET == 0) {
+        print_all_job_status();
+    } else {
+        // Print error if there is one or more args
+        LOG_ERROR(ERROR_STATUS_ARG);
+        return ERROR;
+    }
+    return SUCCESS;
+}
+
+/**
+ * Handles the output internal command
+ * 
+ * @param cmd - The command for arguments
+ */
+int handle_output(struct command_t *cmd) {
+    // If there is one arg,
+    // print the output of the requested job.
+    if (cmd->num_tokens - ARGC_OFFSET == 1) {
+        int job_id = atoi(cmd->tokens[1]);
+        print_job_output(job_id);
+        remove_from_queue(job_id);
+    } else {
+        // Print error if there is one or more args
+        LOG_ERROR(ERROR_OUTPUT_ARG);
+        return ERROR;
+    }
+    return SUCCESS;
+}
+
+/**
+ * Handles the cancel internal command
+ * 
+ * @param cmd - The command for arguments
+ */
+int handle_cancel(struct command_t *cmd) {
+    // If there is one arg,
+    // remove the job from the queue.
+    if (cmd->num_tokens - ARGC_OFFSET == 1) {
+        int job_id = atoi(cmd->tokens[1]);
+        int rc = remove_from_queue(job_id);
+        if (rc < 0) {
+            LOG_ERROR(ERROR_CANCEL_DONE, job_id, job_id);
+            return ERROR;
+        }
+    } else {
+        // Print error if there is one or more args
+        LOG_ERROR(ERROR_CANCEL_ARG);
+        return ERROR;
+    }
+    return SUCCESS;
+}
+
+
+/**
  * The array of available internal commands.
  */
 struct internal_command_t internal_cmds[] = {
@@ -168,6 +270,10 @@ struct internal_command_t internal_cmds[] = {
     { .name = "cd", .handler = handle_cd },
     { .name = "pwd", .handler = handle_pwd },
     { .name = "exit", .handler = handle_exit },
+    { .name = "queue", .handler = handle_queue },
+    { .name = "status", .handler = handle_status },
+    { .name = "output", .handler = handle_output },
+    { .name = "cancel", .handler = handle_cancel },
     NULL
 };
 

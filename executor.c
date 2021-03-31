@@ -128,8 +128,8 @@ int open_in_file(char *fname) {
 int setup_command_redirection(struct command_t *command) {
     int fid;
 
-    // redirection out
-    if (command->file_out) {
+    // open file if fid not yet retrieved for stdin
+    if (command->file_out && command->fid_out == 0) {
         fid = create_out_file(command->outfile, command->file_out);
         if (fid < 0) return ERROR;
 
@@ -137,8 +137,8 @@ int setup_command_redirection(struct command_t *command) {
         command->fid_out = fid; 
     }
 
-    // redirection in
-    if (command->file_in) {
+    // open file if fid not yet retrieved for stdout
+    if (command->file_in && command->fid_in == 0) {
         fid = open_in_file(command->infile);
         if (fid < 0) return ERROR;
 
