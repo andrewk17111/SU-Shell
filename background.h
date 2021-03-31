@@ -35,6 +35,6 @@ void print_all_job_status();
 
 void print_job_output();
 
-void remove_from_queue();
+int remove_from_queue();
 
 #endif

@@ -83,11 +83,11 @@ void dequeue_and_execute() {
                 } else {
                     // parent stores pid of child
                     queue_item->pid = pid;
+                    return;
                 }
             }
         }
     }
-    
 }
 
 void add_to_queue(struct command_t *command) {
@@ -109,7 +109,6 @@ void print_all_job_status() {
     struct list_head *head = &queue_list;
     struct list_head *curr;
     struct queue_item_t *queue_item;
-
     for (curr = head->next; curr != head; curr = curr->next) {
         queue_item = list_entry(curr, struct queue_item_t, list);
 
@@ -132,16 +131,22 @@ void sigchild_handler(int signal) {
     struct list_head *head = &queue_list;
     struct list_head *curr;
     struct queue_item_t *queue_item;
+    bool run_next = false;
 
     for (curr = head->next; curr != head; curr = curr->next) {
         queue_item = list_entry(curr, struct queue_item_t, list);
         pid_t job_pid = queue_item->pid;
-
-        while ((pid = waitpid(job_pid, NULL, WNOHANG)) > 0) {
+        
+        if ((pid = waitpid(job_pid, NULL, WNOHANG)) > 0) {
+            job_running = false;
             queue_item->is_complete = true;
-            dequeue_and_execute();
+            run_next = true;
+            break;
         }
     }
+
+    if (run_next)
+        dequeue_and_execute();
 }
 
 void print_job_output(int job_id) {
@@ -164,24 +169,31 @@ void print_job_output(int job_id) {
             //close file
             fclose(fp);
 
+            list_del(curr);
+            break;
         }
     }
 }
 
 
-void remove_from_queue(int job_id) {
+int remove_from_queue(int job_id) {
     struct list_head *head = &queue_list;
     struct list_head *curr;
     struct queue_item_t *queue_item;
 
     for (curr = head->next; curr != head; curr = curr->next) {
         queue_item = list_entry(curr, struct queue_item_t, list);
-
         if (job_id == queue_item->job_id) {
-            struct list_head *next = curr->next;
-            list_del(curr);
-            free(queue_item);
-            return; 
+            if (queue_item->is_complete) {
+                return ERROR;
+            } else {
+                struct list_head *next = curr->next;
+                list_del(curr);
+                free(queue_item);
+
+                return SUCCESS; 
+            }
+
         }
     }
 }

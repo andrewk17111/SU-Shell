@@ -174,20 +174,27 @@ int handle_exit(struct command_t *cmd) {
  */
 int handle_queue(struct command_t *cmd) {
     int rc;
-    if (is_valid_background_command(cmd)) {
 
-        // remove first token which is the internal command `queue`
-        for(int i=1; i<cmd->num_tokens; i++)
-            cmd->tokens[i-1] = cmd->tokens[i];
+    if (cmd->num_tokens - ARGC_OFFSET > 1) {
 
-        cmd->num_tokens = cmd->num_tokens-1;
-        cmd->cmd_name = cmd->tokens[0];
+        // checks that stdin and stdout are not being changed
+        if (is_valid_background_command(cmd)) {
+            // remove first token which is the internal command `queue`
+            for(int i=1; i<cmd->num_tokens; i++)
+                cmd->tokens[i-1] = cmd->tokens[i];
 
-        // set background commands stdin and stdout
-        rc = set_command_channels(cmd);
-        if (rc < 0) return ERROR;
+            cmd->num_tokens = cmd->num_tokens-1;
+            cmd->cmd_name = cmd->tokens[0];
 
-        add_to_queue(cmd);
+            // set background commands stdin and stdout
+            rc = set_command_channels(cmd);
+            if (rc < 0) return ERROR;
+
+            add_to_queue(cmd);
+        } 
+    } else {
+        LOG_ERROR(ERROR_QUEUE_ARG);
+        return ERROR;
     }
 }
 
@@ -239,7 +246,11 @@ int handle_cancel(struct command_t *cmd) {
     // remove the job from the queue.
     if (cmd->num_tokens - ARGC_OFFSET == 1) {
         int job_id = atoi(cmd->tokens[1]);
-        remove_from_queue(job_id);
+        int rc = remove_from_queue(job_id);
+        if (rc < 0) {
+            LOG_ERROR(ERROR_CANCEL_DONE, job_id, job_id);
+            return ERROR;
+        }
     } else {
         // Print error if there is one or more args
         LOG_ERROR(ERROR_CANCEL_ARG);
