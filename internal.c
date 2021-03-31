@@ -22,12 +22,17 @@
 #include "environ.h"
 #include "background.h"
 
+
+// argc offset set to 2 because tokens array include executable name and null
 #define ARGC_OFFSET 2
 
+
+// internal command struct holds name of command and handler when that command is called
 struct internal_command_t {
     char *name;
     int (*handler)(struct command_t *cmd);
 };
+
 
 /**
  * Handles the setenv internal command
@@ -47,6 +52,7 @@ int handle_setenv(struct command_t *cmd) {
     }
     return SUCCESS;
 }
+
 
 /**
  * Handles the getenv internal command
@@ -79,6 +85,7 @@ int handle_getenv(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
  * Handles the unsetenv internal command
  * 
@@ -97,6 +104,7 @@ int handle_unsetenv(struct command_t *cmd) {
     }
     return SUCCESS;
 }
+
 
 /**
  * Handles the cd internal command
@@ -129,6 +137,7 @@ int handle_cd(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
  * Handles the pwd internal command
  * 
@@ -151,6 +160,7 @@ int handle_pwd(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
  * Handles the exit internal command
  * 
@@ -166,6 +176,7 @@ int handle_exit(struct command_t *cmd) {
     // Return shell exit code.
     return EXIT_SHELL;
 }
+
 
 /**
  * Handles the queue internal command
@@ -198,6 +209,7 @@ int handle_queue(struct command_t *cmd) {
     }
 }
 
+
 /**
  * Handles the status internal command
  * 
@@ -215,6 +227,7 @@ int handle_status(struct command_t *cmd) {
     }
     return SUCCESS;
 }
+
 
 /**
  * Handles the output internal command
@@ -234,6 +247,7 @@ int handle_output(struct command_t *cmd) {
     }
     return SUCCESS;
 }
+
 
 /**
  * Handles the cancel internal command
@@ -276,6 +290,7 @@ struct internal_command_t internal_cmds[] = {
     NULL
 };
 
+
 /**
  * Checks if the given command is an internal command
  * 
@@ -291,6 +306,7 @@ bool is_internal_command(struct command_t *cmd) {
     }
     return false;
 }
+
 
 /**
  * Executed the given internal command

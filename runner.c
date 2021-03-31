@@ -1,3 +1,15 @@
+/**
+ * @file: runner.c
+ * @author: Michael Permyashkin
+ * @author: Andrew Kress
+ * 
+ * @brief: Interface to shell prompt to parse and execute commands
+ * 
+ * Shells prompts user for input and passes command line input to this
+ * interface for processing. Function `do_command` drives processing by
+ * calling the parser to build command data structures and then determining
+ * which execution unit should handle the command(s).
+ */ 
 
 #include <stdio.h>
 #include <string.h>
@@ -9,35 +21,6 @@
 #include "executor.h"
 #include "environ.h"
 #include "background.h"
-
-
-void print_commands(struct command_t *command) {
-    printf("*********************************\n");
-    // ->num_tokens
-    printf("    num_tokens -> %d\n", command->num_tokens);
-    printf("    cmd_name -> %s\n", command->cmd_name);
-    
-    // ->tokens
-    printf("    tokens -> ");
-    for (int i = 0; i < command->num_tokens; i++) {
-        printf("[%s] ", command->tokens[i]);
-    }
-    printf("\n");
-
-    // ->file_in
-    printf("    file_in -> %d\n", command->file_in);
-    printf("    infile -> %s\n", command->infile);
-
-    // ->file_out
-    printf("    file_out -> %d\n", command->file_out);
-    printf("    outfile -> %s\n", command->outfile);
-
-    // ->pipe_in and pipe_out
-    printf("    pipe_in -> %d\n", command->pipe_in);
-    printf("    pipe_out -> %d\n", command->pipe_out);
-
-    printf("*********************************\n");
-}
 
 
 /**
@@ -111,8 +94,7 @@ int do_command(char *cmdline) {
         return rc;
     }
 
-    // print_commands(commands_arr, num_commands);
-
+    // call respective execution unit
     if (is_internal_command(commands_arr[0])) {
         rc = execute_internal_command(commands_arr[0]);
     } else {

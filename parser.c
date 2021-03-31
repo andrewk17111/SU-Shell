@@ -3,12 +3,17 @@
  * @author: Andrew Kress
  * @author: Michael Permyashkin
  * 
- * @brief: Parses command line input 
+ * @brief: Parses command line input and builds an array of commands to execute.
  * 
  * Parses command line input into an array of command structs which hold all information
  * needed by the execution units. The parser uses a state machine
  * by looking at each character in turn, determining what that character is
- * and how to proceed.
+ * and how to proceed. A list of tokens if built for each command present in command line
+ * input and then converted to a command data struct which holds all the information needed
+ * to execute the commmand.
+ * 
+ * Parser finishes by populating an array of commands and returning a success value. If any
+ * errors occur or command(s) are invalid, parser returns an error code.
  */ 
 
 #include <stdio.h>
@@ -264,15 +269,15 @@ int is_redirection_text(char *token_type) {
 int is_valid_stdin(int pipe_in, enum redirect_type_e redir_type, char *in_fname) {
     // stdin can only be redirected once
     if (pipe_in && redir_type == FILE_IN) {
-        return ERROR;
+        return false;
     }
 
     // if rediction in but no filename, error
     if (redir_type == FILE_IN && in_fname == NULL) {
-        return ERROR;
+        return false;
     }
 
-    return SUCCESS;
+    return true;
 }
 
 
@@ -290,15 +295,15 @@ int is_valid_stdin(int pipe_in, enum redirect_type_e redir_type, char *in_fname)
 bool is_valid_stdout(int pipe_out, enum redirect_type_e redir_type, char *out_fname) {
     // stdout can only be redirected once
     if (pipe_out && (redir_type == FILE_OUT_OVERWRITE || redir_type == FILE_OUT_APPEND)) {
-        return ERROR;
+        return false;
     }
 
     // if rediction in but no filename, error
     if ((redir_type == FILE_OUT_OVERWRITE || redir_type == FILE_OUT_APPEND) && out_fname == NULL) {
-        return ERROR;
+        return false;
     }
 
-    return SUCCESS;
+    return true;
 }
 
 
@@ -311,18 +316,16 @@ bool is_valid_stdout(int pipe_out, enum redirect_type_e redir_type, char *out_fn
  * @param command: complete command struct to validate
  * @return true or false if commands stdin and stdout are valid
  */ 
-int is_valid_command(struct command_t *command) {
+bool is_valid_command(struct command_t *command) {
     int rc;
 
     // check stdin configuration
-    rc = is_valid_stdin(command->pipe_in, command->file_in, command->infile);
-    if (rc < 0) return ERROR;
+    if (!is_valid_stdin(command->pipe_in, command->file_in, command->infile)) return false;
 
     // check stdout configuration
-    rc = is_valid_stdout(command->pipe_out, command->file_out, command->outfile);
-    if (rc < 0) return ERROR;
+    if (!is_valid_stdout(command->pipe_out, command->file_out, command->outfile)) return false;
 
-    return SUCCESS;
+    return true;
 }
 
 
@@ -551,7 +554,6 @@ void parse_redirection_token(struct state_machine_t *sm, char c, struct list_hea
         char *text = sub_string(cmdline, sm->sub_start, sm->sub_len);
         add_token_node(sm, list_tokens, text);
     }
-   
     // redirection out 
     if (c == '>') {
         char next_char = cmdline[sm->position + 1];
@@ -741,6 +743,7 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
     // create statemachine for parser
     struct state_machine_t *sm = malloc(sizeof(struct state_machine_t));
 
+
     // parse each subcommands
     for (int i = 0; i < num_commands; i++) {
         // Initialize token list for sub command
@@ -760,8 +763,7 @@ int parse_command(struct command_t *commands_arr[], int num_commands, char *cmdl
         
 
         // verifies stdout and stdin channels are valid
-        rc = is_valid_command(command);
-        if (rc < 0) return ERROR;
+        if (!is_valid_command(command)) return ERROR;
 
 
         // command is built and valid, add to array of commands

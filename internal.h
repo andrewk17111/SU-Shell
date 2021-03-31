@@ -9,7 +9,11 @@
  */ 
 
 #include <stdbool.h>
+
 #include "runner.h"
+
+#ifndef INTERNAL_H
+#define INTERNAL_H
 
 /**
  * Checks if the given command is an internal command
@@ -24,3 +28,5 @@ bool is_internal_command(struct command_t *cmd);
  * @param cmd - The command for arguments
  */
 int execute_internal_command(struct command_t *cmd);
+
+#endif

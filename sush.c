@@ -1,5 +1,5 @@
 /**
- * @file: sushell.c
+ * @file: sush.c
  * @author: Andrew Kress
  * @author: Michael Permyashkin
  * 
@@ -82,6 +82,7 @@ void run_startup_commands() {
     }
 }
 
+
 /**
  * Get's the value to be used for the command prompt.
  */
@@ -95,6 +96,7 @@ char * get_prompt() {
 
     return prompt;
 }
+
 
 /**
  * Launches the shell by first initializing environement, executing any
