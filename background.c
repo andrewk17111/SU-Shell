@@ -29,15 +29,16 @@
 #include "background.h"
 
 
-// counter to assign job ids
-int job_count = 0;
-// flag to signal that a job is running in background
-int job_running = false;
 // buffer to scan lines from output file
 #define LINE_BUFFER 512 
 
+// counter to assign job ids
+static int job_count = 0;
+// flag to signal that a job is running in background
+int job_running = false;
+
 // linked list to hold the queue of commands
-LIST_HEAD(queue_list);
+static LIST_HEAD(queue_list);
 
 
 /**

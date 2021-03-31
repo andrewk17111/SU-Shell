@@ -22,7 +22,7 @@
 
 
 // linked list to hold environment variables
-LIST_HEAD(environment);
+static LIST_HEAD(environment);
 
 
 /**
