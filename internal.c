@@ -210,9 +210,13 @@ int handle_queue(struct command_t *cmd) {
 
         // checks that stdin and stdout are not being changed
         if (is_valid_background_command(cmd)) {
+            // free token `queue` from token array and cmd_name field
+            free(cmd->tokens[0]);
+
             // remove first token which is the internal command `queue`
-            for(int i=1; i<cmd->num_tokens; i++)
+            for(int i=1; i<cmd->num_tokens; i++) {
                 cmd->tokens[i-1] = cmd->tokens[i];
+            }
 
             cmd->num_tokens = cmd->num_tokens-1;
             cmd->cmd_name = cmd->tokens[0];
@@ -288,11 +292,7 @@ int handle_cancel(struct command_t *cmd) {
     // remove the job from the queue.
     if (cmd->num_tokens - ARGC_OFFSET == 1) {
         int job_id = atoi(cmd->tokens[1]);
-        int rc = attempt_cancel_command(job_id);
-        if (rc < 0) {
-            LOG_ERROR(ERROR_CANCEL_DONE, job_id, job_id);
-            return ERROR;
-        }
+        attempt_cancel_command(job_id);
     } else {
         // Print error if there is one or more args
         LOG_ERROR(ERROR_CANCEL_ARG);

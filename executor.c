@@ -311,6 +311,22 @@ int setup_and_execute_command(struct command_t *command, int pipe_in, int pipe_o
 
 
 /**
+ * Cleans up memory allocated to environment array used for execution.
+ * Frees each element of the array and finishes by freeing the array memory
+ * 
+ * @param envp: environement array to free
+ */ 
+void executor_cleanup(char **envp) {
+    int i = 0;
+    while (envp[i] != NULL) {
+        free(envp[i]);
+        i++;
+    }
+    free(envp);
+}
+
+
+/**
  * Driver function which executes an array of commands using the information stored in 
  * each command stuct to determine the behavior of each commands execution. During each
  * commands setup, all return codes are error checked and execution will terminate if
@@ -362,6 +378,9 @@ int execute_external_command(struct command_t *commands_arr[], int num_commands)
     // reset stdin and stdout to default
     rc = reset_stdin_stdout(stdin_copy, stdout_copy);
     if (rc < 0) return ERROR;
+
+    // cleanup executor
+    executor_cleanup(envp);
 
     return SUCCESS;
 }

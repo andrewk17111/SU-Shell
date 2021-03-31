@@ -107,7 +107,7 @@ int main(int argc, char *argv[], char *envp[]) {
     int rc;
 
     // register callback for child death signal, exit on failure
-    if (!register_handler(sigchild_handler, SIGCHLD)) return -1;
+    if (!register_handler(sig_handler, SIGCHLD)) return -1;
 
     // Environment Setup
     environ_init(envp);
@@ -140,6 +140,9 @@ int main(int argc, char *argv[], char *envp[]) {
 
     // clean up after exit command
     environ_clean_up();
+
+    // clean and free queue
+    queue_cleanup();
 
     // exit shell
     exit(0);

@@ -41,7 +41,7 @@
 // errors for command queue and background execution
 #define ERROR_QUEUE_ARG  "Error - queue requires at least two arguments\n"
 #define ERROR_OUTPUT_ARG "Error - output takes one argument\n"
-#define ERROR_OUTPUT_QUEUED   "Error - task %d is still queued."                    // task # 0, 1, ...
+#define ERROR_OUTPUT_QUEUED   "Error - task %d is still queued.\n"                  // task # 0, 1, ...
 #define ERROR_OUTPUT_RUNNING "Error - task %d is still running\n"                   // task # 
 #define ERROR_STATUS_ARG "Error - status takes 0 arguments\n"
 #define ERROR_CANCEL_ARG "Error - cancel takes one argument\n"

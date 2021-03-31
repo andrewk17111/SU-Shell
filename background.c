@@ -24,6 +24,7 @@
 #include "runner.h"
 #include "internal.h"
 #include "executor.h"
+#include "error.h"
 #include "environ.h"
 #include "background.h"
 
@@ -150,7 +151,7 @@ void add_to_queue(struct command_t *command) {
     // initialize queue item and assign next job id
     queue_item->job_id = job_count++;
     queue_item->is_complete = false;
-    queue_item->outfile = command->outfile;
+    queue_item->outfile = strdup(command->outfile);
     queue_item->command = command;
 
     // add item to back of queue
@@ -175,29 +176,66 @@ void print_all_job_status() {
         queue_item = list_entry(curr, struct queue_item_t, list);
 
         // command is complete
-        if (queue_item->is_complete)
-            printf("%d is complete\n", queue_item->job_id);
+        if (queue_item->is_complete) {
+            LOG_MSG(MSG_STATUS_COMPLETE, queue_item->job_id);
+        }
         // command is queued and not running so no pid has been assigned
-        else if (queue_item->pid == 0)
-            printf("%d - is queued\n", queue_item->job_id);
+        else if (queue_item->pid == 0) {
+            LOG_MSG(MSG_STATUS_QUEUED, queue_item->job_id);
+        }
+        // command is runnning and not complete
+        else {
+            LOG_MSG(MSG_STATUS_RUNNING, queue_item->job_id, queue_item->job_id);
+        }
     }
 }
 
 
 /**
- * Registered to handle all SIGCHLD signals. Handles the death of the child 
- * by checking if the child was a command that was just run in the background. 
- * If it is, the completed command is updated as complete and the next command 
- * is dequeued.
- * 
- * @param signal: signal will be SIGCHLD
+ * When command is canceled or output is viewed, the command is removed from the queue
+ * and the output file is deleted. Handles removing the temporary output file and freeing
+ * memory allocated to queue item.
  */ 
-void sigchild_handler(int signal) {
+void delete_file_and_remove_command(struct queue_item_t *queue_item) {
+    // free all tokens and token array
+    int num_toks = queue_item->command->num_tokens;
+    for (int j=0;j<num_toks; j++ ) {
+        free(queue_item->command->tokens[j]);
+    }
+    free(queue_item->command->tokens);
+
+    // free filename output file template name
+    free(queue_item->command->outfile);
+    
+    // free command struct
+    free(queue_item->command);
+
+    // remove from queue
+    list_del(&queue_item->list);
+
+    // delete temp file 
+    remove(queue_item->outfile);
+    free(queue_item->outfile);
+
+    // free memory storing output file name
+    free(queue_item);
+}
+
+
+/**
+ * Call back function to handle all signals registered in main shell function. 
+ * Our shell registers this function to handle SIGCHLD in order to determine if jobs
+ * from the queue have been completed and the next should be run. 
+ * 
+ * This function is also used to confirm if a job in the background was cancelled successfully.
+ * 
+ * @param signal: signal id
+ */ 
+void sig_handler(int signal) {
     pid_t pid;
     struct list_head *head = &queue_list;
     struct list_head *curr;
     struct queue_item_t *queue_item;
-
     bool run_next = false; // set to true if the child was a background command
 
     // scan queue and check if pid matches
@@ -208,9 +246,18 @@ void sigchild_handler(int signal) {
         // id pid matches, this was the command that just completed
         if ((pid = waitpid(job_pid, NULL, WNOHANG)) > 0) {
             job_running = false;
-            queue_item->is_complete = true;
+
+            // job completed normally
+            if (signal == SIGCHLD) {
+                queue_item->is_complete = true;
+            }
+            // job was sent a kill signal to cancel
+            if (signal == SIGKILL) {
+                delete_file_and_remove_command(queue_item);
+                LOG_MSG(MSG_CANCEL_OK, queue_item->job_id);
+            }
+
             run_next = true;
-            break;
         }
     }
 
@@ -221,17 +268,44 @@ void sigchild_handler(int signal) {
 
 
 /**
- * When command is canceled or output is viewed, the command is removed from the queue
- * and the output file is deleted. Handles removing the temporary output file and freeing
- * memory allocated to queue item.
+ * Checks if a given command is currently in the queue. This is used when doing any
+ * cleanup so we avoid double freeing a pointer.
+ * 
+ * @param command: command to search for in queue
  */ 
-void delete_file_and_remove_command(struct queue_item_t *queue_item) {
-    // delete file
-    remove(queue_item->outfile);
-    // remove from queue
-    list_del(&queue_item->list);
+bool is_command_in_queue(struct command_t *command) {
+    struct list_head *head = &queue_list;
+    struct list_head *curr;
+    struct queue_item_t *queue_item;
 
-    free(queue_item);
+    for (curr = head->next; curr != head; curr = curr->next) {
+        queue_item = list_entry(curr, struct queue_item_t, list);
+
+        // queue item points to same address
+        if (queue_item->command == command) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+/**
+ * Prints contents of an output file given the file name/path
+ * 
+ * @param fname: name/path to file
+ */ 
+void print_output_file(char *fname) {
+    FILE *fp = fopen(fname, "r");
+
+    // read and print each line of file
+    char line[LINE_BUFFER];
+    while (fgets(line, LINE_BUFFER, fp)) {
+        printf("%s", line);
+    }
+    // close file
+    fclose(fp);
 }
 
 
@@ -252,18 +326,24 @@ void print_output_and_remove(int job_id) {
         queue_item = list_entry(curr, struct queue_item_t, list);
 
         if (job_id == queue_item->job_id) {
-            FILE *fp = fopen(queue_item->outfile, "r");
 
-            // read and print each line of file
-            char line[LINE_BUFFER];
-            while (fgets(line, LINE_BUFFER, fp)) {
-                printf("%s", line);
+            // job is still running
+            if (queue_item->pid != 0 && !queue_item->is_complete) {
+                // Print error if there is one or more args
+                LOG_ERROR(ERROR_OUTPUT_RUNNING, queue_item->job_id);
             }
-            // close file
-            fclose(fp);
-
-            // delete file and remove command from queue 
-            delete_file_and_remove_command(queue_item);
+            // job still in queue and not complete
+            else if (queue_item->pid == 0 && !queue_item->is_complete) {
+                // Print error if there is one or more args
+                LOG_ERROR(ERROR_OUTPUT_QUEUED, queue_item->job_id);
+            }
+            // job is complete, display output and remove file and queue item
+            else {
+                // print contents of file
+                print_output_file(queue_item->outfile);
+                // delete file and remove command from queue 
+                delete_file_and_remove_command(queue_item);
+            }
             break;
         }
     }
@@ -276,9 +356,8 @@ void print_output_and_remove(int job_id) {
  * has already been completed and cannot be executed.
  * 
  * @param job_id: id of job to attempt cancel
- * @return: status of cancel attempt
  */ 
-int attempt_cancel_command(int job_id) {
+void attempt_cancel_command(int job_id) {
     struct list_head *head = &queue_list;
     struct list_head *curr;
     struct queue_item_t *queue_item;
@@ -287,16 +366,39 @@ int attempt_cancel_command(int job_id) {
         queue_item = list_entry(curr, struct queue_item_t, list);
         
         if (job_id == queue_item->job_id) {
-            // unable to cancel if command is complete or currently running
-            if (queue_item->is_complete || queue_item->pid != 0) {
-                return ERROR;
+            // unable to cancel, job is done
+            if (queue_item->is_complete && queue_item->pid != 0) {
+                LOG_ERROR(ERROR_CANCEL_DONE, job_id, job_id);
+            } 
+            // attempt kill, job is running
+            else if (!queue_item->is_complete && queue_item->pid != 0) {
+                LOG_ERROR(MSG_CANCEL_KILL, job_id, queue_item->pid);
+                kill(queue_item->pid, SIGKILL);
             } 
             // able to cancel, remove from queue
             else {
                 delete_file_and_remove_command(queue_item);
-
-                return SUCCESS; 
             }
         }
+    }
+}
+
+
+/**
+ * Removes all items from the queue and deletes output files for each and finishes
+ * by freeing all memory allocated to queue items and commands. This function executes
+ * when the shell recieves an exit status.
+ */ 
+void queue_cleanup() {
+    struct list_head *head = &queue_list;
+    struct list_head *curr;
+    struct queue_item_t *queue_item;
+
+    for (curr = head->next; curr != head; curr = curr->next) {
+        queue_item = list_entry(curr, struct queue_item_t, list);
+
+        curr = curr->prev;
+
+        delete_file_and_remove_command(queue_item);
     }
 }

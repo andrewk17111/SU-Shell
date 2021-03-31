@@ -24,6 +24,38 @@
 
 
 /**
+ * frees all allocated memory to hold command structures. Checks if command
+ * is in queue before freeing the command structure to prevent a double free
+ * when item is removed from queue.
+ * 
+ * @param commands_arr: array of command structures to free
+ * @param num_commands: number of command structures present
+ */ 
+void runner_clean_up(struct command_t *commands_arr[], int num_commands) {
+    for (int i=0; i<num_commands; i++) {
+
+        // only free commands not in queue
+        if (!is_command_in_queue(commands_arr[i])) {
+            // free each token in array
+            int num_toks = commands_arr[i]->num_tokens;
+            for (int j=0;j<num_toks; j++ ) {
+                free(commands_arr[i]->tokens[j]);
+            }
+            // free token array
+            free(commands_arr[i]->tokens);
+
+            // free filename fields
+            free(commands_arr[i]->outfile);
+            free(commands_arr[i]->infile);
+            
+            // free command struct
+            free(commands_arr[i]);
+        }
+    }
+}
+
+
+/**
  * Counts the number of subcommands present in a given command line. Each time
  * a pipe is encountered we incremenet the counter and return the final value.
  * 
@@ -56,7 +88,7 @@ int do_command(char *cmdline) {
 
     // count number of commands and allocate memory to hold n command stucts
     int num_commands = get_num_subcommands(cmdline);
-    struct command_t **commands_arr = malloc(sizeof(struct command_t *) * num_commands);
+    struct command_t *commands_arr[num_commands];
 
     // parse commands to populate array of command structs
     rc = parse_command(commands_arr, num_commands, cmdline);
@@ -71,6 +103,9 @@ int do_command(char *cmdline) {
     } else {
         rc = execute_external_command(commands_arr, num_commands);
     }
+
+    // release all memory allocated to hold commands
+    runner_clean_up(commands_arr, num_commands);
 
     return rc;
 }

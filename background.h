@@ -39,6 +39,14 @@ struct queue_item_t {
 bool is_valid_background_command(struct command_t *command);
 
 /**
+ * Checks if a given command is currently in the queue. This is used when doing any
+ * cleanup so we avoid double freeing a pointer.
+ * 
+ * @param command: command to search for in queue
+ */ 
+bool is_command_in_queue(struct command_t *command);
+
+/**
  * Sets background command's stdin and stdout. Stdin is closed
  * and stdout always goes to a unique temp file. This configuration
  * is stored in the command struct prior to adding it to the queue
@@ -62,14 +70,15 @@ void add_to_queue(struct command_t *command);
 void print_all_job_status();
 
 /**
- * Registered to handle all SIGCHLD signals. Handles the death of the child 
- * by checking if the child was a command that was just run in the background. 
- * If it is, the completed command is updated as complete and the next command 
- * is dequeued.
+ * Call back function to handle all signals registered in main shell function. 
+ * Our shell registers this function to handle SIGCHLD in order to determine if jobs
+ * from the queue have been completed and the next should be run. 
  * 
- * @param signal: signal will be SIGCHLD
+ * This function is also used to confirm if a job in the background was cancelled successfully.
+ * 
+ * @param signal: signal id
  */ 
-void sigchild_handler(int signal);
+void sig_handler(int signal);
 
 /**
  * Prints the output of the command with the specified job id if the command is complete. 
@@ -89,6 +98,11 @@ void print_output_and_remove(int job_id);
  * @param job_id: id of job to attempt cancel
  * @return: status of cancel attempt
  */ 
-int attempt_cancel_command(int job_id);
+void attempt_cancel_command(int job_id);
+
+/**
+ * Removes all items from queue and frees memory when exiting the shell
+ */ 
+void queue_cleanup();
 
 #endif

@@ -18,7 +18,6 @@
 #ifndef RUNNER_H
 #define RUNNER_H
 
-
 // constants for consistent error and success return values 
 #define ERROR -1
 #define SUCCESS 1
