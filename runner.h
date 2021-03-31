@@ -3,10 +3,11 @@
  * @author: Michael Permyashkin
  * @author: Andrew Kress
  * 
- * @brief: Header file to define shared functions and structures across the shell. For consistent
- * error checking, this header file defines a success and error return value which is used by all 
- * function in the shell that peform function that if fail, need to ripple through the shell to 
- * display or handle the error accordingly. 
+ * @brief: Header file to define shared functions and structures across the shell. 
+ * 
+ * For consistent error checking, this header file defines a success and error return value which 
+ * is used by all function in the shell that peform function that if fail, need to ripple through 
+ * the shell to display or handle the error accordingly. 
  */ 
 
 #include <stddef.h>

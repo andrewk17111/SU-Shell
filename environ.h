@@ -15,6 +15,7 @@
 #ifndef ENVIRON_H
 #define ENVIRON_H
 
+// struct to store environment variables as key:value pairs in a linked list
 struct environ_var_t {
     char *name;
     char *value;
@@ -22,17 +23,20 @@ struct environ_var_t {
 };
 
 /**
- * Returns a string array for the environment variables from the environment list
+ * Returns a null terminated string array for the environment variables from 
+ * the environment linked list
  * 
- * @return Environment string array
+ * @return null terminated string array of environment variables
  **/
 char **make_environ();
+
 /**
- * Sets up the environment linked list
+ * Initialized environment linked list with array passed to shell 
  * 
  * @param envp - Environment string array like envp from main
  **/
 void environ_init(char **envp);
+
 /**
  * Checks if an environment variable exists
  * 
@@ -41,6 +45,7 @@ void environ_init(char **envp);
  * @return true if variable exists in the environment; false if it doesn't
  **/
 bool environ_var_exist(char *name);
+
 /**
  * Add new environment variable if one of the given name
  * doesn't exist or update it if one does exist
@@ -49,6 +54,7 @@ bool environ_var_exist(char *name);
  * @param value - Value of the environment variable
  **/
 void environ_set_var(char *name, char *value);
+
 /**
  * Remove an environment variable of the given name
  * if it is in the list
@@ -56,6 +62,7 @@ void environ_set_var(char *name, char *value);
  * @param name - Name of the environment variable
  **/
 void environ_remove_var(char *name);
+
 /**
  * Returns the environment variable that has the
  * given name
@@ -65,12 +72,15 @@ void environ_remove_var(char *name);
  * @return The environment variable
  **/
 struct environ_var_t *environ_get_var(char *name);
+
 /**
  * Prints the current environment variables and their values
  **/
 void environ_print();
+
 /**
  * Cleans up and frees the variables used by environ.c
  */
 void environ_clean_up();
+
 #endif
