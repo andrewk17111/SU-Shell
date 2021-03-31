@@ -45,35 +45,6 @@ int get_num_subcommands(char *cmdline) {
 
 
 /**
- * frees all allocated memory to hold command structures.
- * 
- * @param commands_arr: array of command structures to free
- * @param num_commands: number of command structures present
- */ 
-void runner_clean_up(struct command_t *commands_arr[], int num_commands) {
-    for (int i=0; i<num_commands; i++) {
-
-        // free each token in array
-        int num_toks = commands_arr[i]->num_tokens;
-        for (int j=0;j<num_toks; j++ ) {
-            free(commands_arr[i]->tokens[j]);
-        }
-        // free token array
-        free(commands_arr[i]->tokens);
-
-        // free filename fields
-        free(commands_arr[i]->outfile);
-        free(commands_arr[i]->infile);
-        
-        // free command struct
-        free(commands_arr[i]);
-    }
-    // free array that held commands
-    free(commands_arr);
-}
-
-
-/**
  * Takes the command line input, parses the command and executes the array of commands
  * 
  * @param cmdline: the command that was entered by user
@@ -100,9 +71,6 @@ int do_command(char *cmdline) {
     } else {
         rc = execute_external_command(commands_arr, num_commands);
     }
-    
-    // release all memory allocated to hold commands
-    // runner_clean_up(commands_arr, num_commands);
 
     return rc;
 }
