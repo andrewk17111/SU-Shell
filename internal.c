@@ -35,9 +35,12 @@ struct internal_command_t {
 
 
 /**
- * Handles the setenv internal command
+ * Handles the setenv command to set the value of an existing
+ * environment variable or add a new environment variable.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_setenv(struct command_t *cmd) {
     // If there are two args,
@@ -55,9 +58,12 @@ int handle_setenv(struct command_t *cmd) {
 
 
 /**
- * Handles the getenv internal command
+ * Handles the getenv command to get the value of an
+ * environment variable or get the value of all the variables.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_getenv(struct command_t *cmd) {
     // If there aren't any args for getenv,
@@ -87,9 +93,12 @@ int handle_getenv(struct command_t *cmd) {
 
 
 /**
- * Handles the unsetenv internal command
+ * Handles the unsetenv command to remove a variable from
+ * the internal environment.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_unsetenv(struct command_t *cmd) {
     // If there is one arg,
@@ -107,9 +116,12 @@ int handle_unsetenv(struct command_t *cmd) {
 
 
 /**
- * Handles the cd internal command
+ * Handles the cd command to change the current working
+ * directory of sush.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_cd(struct command_t *cmd) {
     // If there aren't an args,
@@ -139,9 +151,12 @@ int handle_cd(struct command_t *cmd) {
 
 
 /**
- * Handles the pwd internal command
+ * Handles the pwd command to print the current
+ * working directory.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_pwd(struct command_t *cmd) {
     // If there aren't any args,
@@ -150,7 +165,7 @@ int handle_pwd(struct command_t *cmd) {
         // Get cwd.
         char *cwd = malloc(1024);
         getcwd(cwd, 1024);
-        // Print cwd.
+        // Print the current working directory.
         printf("%s\n", cwd);
     } else {
         // Print error if there is one or more args
@@ -162,9 +177,11 @@ int handle_pwd(struct command_t *cmd) {
 
 
 /**
- * Handles the exit internal command
+ * Handles the exit command to terminate sush.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return EXIT_SHELL or ERROR if the command succeeds or fails.
  */
 int handle_exit(struct command_t *cmd) {
     // If there are any arguments,
@@ -179,9 +196,12 @@ int handle_exit(struct command_t *cmd) {
 
 
 /**
- * Handles the queue internal command
+ * Handles the queue command to add the given command to
+ * the background job queue.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_queue(struct command_t *cmd) {
     int rc;
@@ -211,9 +231,12 @@ int handle_queue(struct command_t *cmd) {
 
 
 /**
- * Handles the status internal command
+ * Handles the status command to get the statuses of the
+ * jobs in the job queue.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_status(struct command_t *cmd) {
     // If there aren't any args,
@@ -230,9 +253,12 @@ int handle_status(struct command_t *cmd) {
 
 
 /**
- * Handles the output internal command
+ * Handles the output command to get the output of
+ * the requested background job.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_output(struct command_t *cmd) {
     // If there is one arg,
@@ -250,9 +276,12 @@ int handle_output(struct command_t *cmd) {
 
 
 /**
- * Handles the cancel internal command
+ * Handles the cancel command to cancel a
+ * background job.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_cancel(struct command_t *cmd) {
     // If there is one arg,
@@ -292,9 +321,11 @@ struct internal_command_t internal_cmds[] = {
 
 
 /**
- * Checks if the given command is an internal command
+ * Checks if the given command is an internal command.
  * 
  * @param cmd - The command to check
+ * 
+ * @return True if the command was found. False if it wasn't.
  */
 bool is_internal_command(struct command_t *cmd) {
     // Loop through the internal commands,
@@ -309,7 +340,7 @@ bool is_internal_command(struct command_t *cmd) {
 
 
 /**
- * Executed the given internal command
+ * Executed the given internal command.
  * 
  * @param cmd - The command for arguments
  */
