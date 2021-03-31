@@ -20,7 +20,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "cmdline.h"
+#include "runner.h"
 #include "executor.h"
 #include "environ.h"
 #include "error.h"

@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "cmdline.h"
+#include "runner.h"
 #include "internal.h"
 #include "error.h"
 #include "environ.h"

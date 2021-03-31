@@ -9,7 +9,7 @@
  */ 
 
 #include <stdbool.h>
-#include "cmdline.h"
+#include "runner.h"
 
 /**
  * Checks if the given command is an internal command

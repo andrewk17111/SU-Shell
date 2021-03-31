@@ -20,7 +20,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 
-#include "cmdline.h"
+#include "runner.h"
 #include "error.h"
 #include "environ.h"
 #include "background.h"

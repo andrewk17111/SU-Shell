@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "cmdline.h"
+#include "runner.h"
 #include "error.h"
 #include "internal.h"
 #include "executor.h"

@@ -1,3 +1,16 @@
+/**
+ * @file: background.c
+ * @author: Michael Permyashkin
+ * 
+ * @brief: functions for shell queue feature for background processesing of commands
+ * 
+ * The shell supports the ability to queue commands to run in the background one at a time.
+ * This file defines the functions to support the internal commands to untilize this feature.
+ * The queue is a linked list which commands are enqueued and dequeued for execution. All commands
+ * output is redirected to a temporary file which can only be viewed once before the command is
+ * removed from the queue and the file is deleted.
+ */ 
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,7 +21,7 @@
 #include <sys/wait.h>
 
 #include "list.h"
-#include "cmdline.h"
+#include "runner.h"
 #include "internal.h"
 #include "executor.h"
 #include "environ.h"
@@ -205,7 +218,6 @@ void sigchild_handler(int signal) {
     if (run_next)
         dequeue_and_execute();
 }
-
 
 
 /**
