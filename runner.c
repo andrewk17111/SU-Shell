@@ -1,9 +1,21 @@
+/**
+ * @file: runner.c
+ * @author: Michael Permyashkin
+ * @author: Andrew Kress
+ * 
+ * @brief: Interface to shell prompt to parse and execute commands
+ * 
+ * Shells prompts user for input and passes command line input to this
+ * interface for processing. Function `do_command` drives processing by
+ * calling the parser to build command data structures and then determining
+ * which execution unit should handle the command(s).
+ */ 
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#include "cmdline.h"
+#include "runner.h"
 #include "error.h"
 #include "internal.h"
 #include "executor.h"
@@ -11,32 +23,35 @@
 #include "background.h"
 
 
-void print_commands(struct command_t *command) {
-    printf("*********************************\n");
-    // ->num_tokens
-    printf("    num_tokens -> %d\n", command->num_tokens);
-    printf("    cmd_name -> %s\n", command->cmd_name);
-    
-    // ->tokens
-    printf("    tokens -> ");
-    for (int i = 0; i < command->num_tokens; i++) {
-        printf("[%s] ", command->tokens[i]);
+/**
+ * frees all allocated memory to hold command structures. Checks if command
+ * is in queue before freeing the command structure to prevent a double free
+ * when item is removed from queue.
+ * 
+ * @param commands_arr: array of command structures to free
+ * @param num_commands: number of command structures present
+ */ 
+void runner_clean_up(struct command_t *commands_arr[], int num_commands) {
+    for (int i=0; i<num_commands; i++) {
+
+        // only free commands not in queue
+        if (!is_command_in_queue(commands_arr[i])) {
+            // free each token in array
+            int num_toks = commands_arr[i]->num_tokens;
+            for (int j=0;j<num_toks; j++ ) {
+                free(commands_arr[i]->tokens[j]);
+            }
+            // free token array
+            free(commands_arr[i]->tokens);
+
+            // free filename fields
+            free(commands_arr[i]->outfile);
+            free(commands_arr[i]->infile);
+            
+            // free command struct
+            free(commands_arr[i]);
+        }
     }
-    printf("\n");
-
-    // ->file_in
-    printf("    file_in -> %d\n", command->file_in);
-    printf("    infile -> %s\n", command->infile);
-
-    // ->file_out
-    printf("    file_out -> %d\n", command->file_out);
-    printf("    outfile -> %s\n", command->outfile);
-
-    // ->pipe_in and pipe_out
-    printf("    pipe_in -> %d\n", command->pipe_in);
-    printf("    pipe_out -> %d\n", command->pipe_out);
-
-    printf("*********************************\n");
 }
 
 
@@ -62,35 +77,6 @@ int get_num_subcommands(char *cmdline) {
 
 
 /**
- * frees all allocated memory to hold command structures.
- * 
- * @param commands_arr: array of command structures to free
- * @param num_commands: number of command structures present
- */ 
-void runner_clean_up(struct command_t *commands_arr[], int num_commands) {
-    for (int i=0; i<num_commands; i++) {
-
-        // free each token in array
-        int num_toks = commands_arr[i]->num_tokens;
-        for (int j=0;j<num_toks; j++ ) {
-            free(commands_arr[i]->tokens[j]);
-        }
-        // free token array
-        free(commands_arr[i]->tokens);
-
-        // free filename fields
-        free(commands_arr[i]->outfile);
-        free(commands_arr[i]->infile);
-        
-        // free command struct
-        free(commands_arr[i]);
-    }
-    // free array that held commands
-    free(commands_arr);
-}
-
-
-/**
  * Takes the command line input, parses the command and executes the array of commands
  * 
  * @param cmdline: the command that was entered by user
@@ -102,7 +88,7 @@ int do_command(char *cmdline) {
 
     // count number of commands and allocate memory to hold n command stucts
     int num_commands = get_num_subcommands(cmdline);
-    struct command_t **commands_arr = malloc(sizeof(struct command_t *) * num_commands);
+    struct command_t *commands_arr[num_commands];
 
     // parse commands to populate array of command structs
     rc = parse_command(commands_arr, num_commands, cmdline);
@@ -111,16 +97,15 @@ int do_command(char *cmdline) {
         return rc;
     }
 
-    // print_commands(commands_arr, num_commands);
-
+    // call respective execution unit
     if (is_internal_command(commands_arr[0])) {
         rc = execute_internal_command(commands_arr[0]);
     } else {
         rc = execute_external_command(commands_arr, num_commands);
     }
-    
+
     // release all memory allocated to hold commands
-    // runner_clean_up(commands_arr, num_commands);
+    runner_clean_up(commands_arr, num_commands);
 
     return rc;
 }

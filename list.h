@@ -3,10 +3,11 @@
  * @author: Michael Permyashkin
  * 
  * @brief: Header file for linked list utility functions for basic operations and function
- * like macros
+ * like macros for initalization and node extraction
  * 
  * Defintions of function-like macros to assist with list initialization and list node
- * types. Includes function signatures whose implementation can be found in @file list.c
+ * types. Functions provide ability to add, remove and delete nodes, check list size and whether
+ * the list is empty
  */ 
 
 #include <stddef.h>
@@ -69,11 +70,12 @@ void list_add(struct list_head *new, struct list_head *head);
  **/ 
 void list_add_tail(struct list_head *new, struct list_head *head);
 
-/** Removes the item from the list.  
- *  Since the entry that is removed is no longer part of the original list, 
- *  update its next and prev pointers to itself (like LIST_INIT).
+/** 
+ * Removes the item from the list.  
+ * Since the entry that is removed is no longer part of the original list, 
+ * update its next and prev pointers to itself (like LIST_INIT).
  *
- * @entry: the node we want to remove from the list
+ * @param entry: the node we want to remove from the list
  **/ 
 void list_del(struct list_head *entry);
 

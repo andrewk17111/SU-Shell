@@ -16,23 +16,31 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "cmdline.h"
+#include "runner.h"
 #include "internal.h"
 #include "error.h"
 #include "environ.h"
 #include "background.h"
 
+
+// argc offset set to 2 because tokens array include executable name and null
 #define ARGC_OFFSET 2
 
+
+// internal command struct holds name of command and handler when that command is called
 struct internal_command_t {
     char *name;
     int (*handler)(struct command_t *cmd);
 };
 
+
 /**
- * Handles the setenv internal command
+ * Handles the setenv command to set the value of an existing
+ * environment variable or add a new environment variable.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_setenv(struct command_t *cmd) {
     // If there are two args,
@@ -48,10 +56,14 @@ int handle_setenv(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
- * Handles the getenv internal command
+ * Handles the getenv command to get the value of an
+ * environment variable or get the value of all the variables.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_getenv(struct command_t *cmd) {
     // If there aren't any args for getenv,
@@ -79,10 +91,14 @@ int handle_getenv(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
- * Handles the unsetenv internal command
+ * Handles the unsetenv command to remove a variable from
+ * the internal environment.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_unsetenv(struct command_t *cmd) {
     // If there is one arg,
@@ -98,10 +114,14 @@ int handle_unsetenv(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
- * Handles the cd internal command
+ * Handles the cd command to change the current working
+ * directory of sush.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_cd(struct command_t *cmd) {
     // If there aren't an args,
@@ -129,10 +149,14 @@ int handle_cd(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
- * Handles the pwd internal command
+ * Handles the pwd command to print the current
+ * working directory.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_pwd(struct command_t *cmd) {
     // If there aren't any args,
@@ -141,7 +165,7 @@ int handle_pwd(struct command_t *cmd) {
         // Get cwd.
         char *cwd = malloc(1024);
         getcwd(cwd, 1024);
-        // Print cwd.
+        // Print the current working directory.
         printf("%s\n", cwd);
     } else {
         // Print error if there is one or more args
@@ -151,10 +175,13 @@ int handle_pwd(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
- * Handles the exit internal command
+ * Handles the exit command to terminate sush.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return EXIT_SHELL or ERROR if the command succeeds or fails.
  */
 int handle_exit(struct command_t *cmd) {
     // If there are any arguments,
@@ -167,10 +194,14 @@ int handle_exit(struct command_t *cmd) {
     return EXIT_SHELL;
 }
 
+
 /**
- * Handles the queue internal command
+ * Handles the queue command to add the given command to
+ * the background job queue.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_queue(struct command_t *cmd) {
     int rc;
@@ -179,9 +210,13 @@ int handle_queue(struct command_t *cmd) {
 
         // checks that stdin and stdout are not being changed
         if (is_valid_background_command(cmd)) {
+            // free token `queue` from token array and cmd_name field
+            free(cmd->tokens[0]);
+
             // remove first token which is the internal command `queue`
-            for(int i=1; i<cmd->num_tokens; i++)
+            for(int i=1; i<cmd->num_tokens; i++) {
                 cmd->tokens[i-1] = cmd->tokens[i];
+            }
 
             cmd->num_tokens = cmd->num_tokens-1;
             cmd->cmd_name = cmd->tokens[0];
@@ -198,10 +233,14 @@ int handle_queue(struct command_t *cmd) {
     }
 }
 
+
 /**
- * Handles the status internal command
+ * Handles the status command to get the statuses of the
+ * jobs in the job queue.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_status(struct command_t *cmd) {
     // If there aren't any args,
@@ -216,18 +255,21 @@ int handle_status(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
- * Handles the output internal command
+ * Handles the output command to get the output of
+ * the requested background job.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_output(struct command_t *cmd) {
     // If there is one arg,
     // print the output of the requested job.
     if (cmd->num_tokens - ARGC_OFFSET == 1) {
         int job_id = atoi(cmd->tokens[1]);
-        print_job_output(job_id);
-        remove_from_queue(job_id);
+        print_output_and_remove(job_id);
     } else {
         // Print error if there is one or more args
         LOG_ERROR(ERROR_OUTPUT_ARG);
@@ -236,21 +278,21 @@ int handle_output(struct command_t *cmd) {
     return SUCCESS;
 }
 
+
 /**
- * Handles the cancel internal command
+ * Handles the cancel command to cancel a
+ * background job.
  * 
  * @param cmd - The command for arguments
+ * 
+ * @return SUCCESS or ERROR if the command succeeds or fails.
  */
 int handle_cancel(struct command_t *cmd) {
     // If there is one arg,
     // remove the job from the queue.
     if (cmd->num_tokens - ARGC_OFFSET == 1) {
         int job_id = atoi(cmd->tokens[1]);
-        int rc = remove_from_queue(job_id);
-        if (rc < 0) {
-            LOG_ERROR(ERROR_CANCEL_DONE, job_id, job_id);
-            return ERROR;
-        }
+        attempt_cancel_command(job_id);
     } else {
         // Print error if there is one or more args
         LOG_ERROR(ERROR_CANCEL_ARG);
@@ -277,10 +319,13 @@ struct internal_command_t internal_cmds[] = {
     NULL
 };
 
+
 /**
- * Checks if the given command is an internal command
+ * Checks if the given command is an internal command.
  * 
  * @param cmd - The command to check
+ * 
+ * @return True if the command was found. False if it wasn't.
  */
 bool is_internal_command(struct command_t *cmd) {
     // Loop through the internal commands,
@@ -293,8 +338,9 @@ bool is_internal_command(struct command_t *cmd) {
     return false;
 }
 
+
 /**
- * Executed the given internal command
+ * Executed the given internal command.
  * 
  * @param cmd - The command for arguments
  */

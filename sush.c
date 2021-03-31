@@ -1,5 +1,5 @@
 /**
- * @file: sushell.c
+ * @file: sush.c
  * @author: Andrew Kress
  * @author: Michael Permyashkin
  * 
@@ -20,7 +20,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 
-#include "cmdline.h"
+#include "runner.h"
 #include "error.h"
 #include "environ.h"
 #include "background.h"
@@ -82,6 +82,7 @@ void run_startup_commands() {
     }
 }
 
+
 /**
  * Get's the value to be used for the command prompt.
  */
@@ -96,6 +97,7 @@ char * get_prompt() {
     return prompt;
 }
 
+
 /**
  * Launches the shell by first initializing environement, executing any
  * startup command defined in .sushrc file and then enters loop to prompt
@@ -105,7 +107,7 @@ int main(int argc, char *argv[], char *envp[]) {
     int rc;
 
     // register callback for child death signal, exit on failure
-    if (!register_handler(sigchild_handler, SIGCHLD)) return -1;
+    if (!register_handler(sig_handler, SIGCHLD)) return -1;
 
     // Environment Setup
     environ_init(envp);
@@ -138,6 +140,9 @@ int main(int argc, char *argv[], char *envp[]) {
 
     // clean up after exit command
     environ_clean_up();
+
+    // clean and free queue
+    queue_cleanup();
 
     // exit shell
     exit(0);
